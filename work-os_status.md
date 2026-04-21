@@ -5,35 +5,50 @@
 ---
 
 ## Just Completed
-- Added `CLAUDE.md` (fetched from `alexflexentric/claude-config`)
-- Created `work-os_documentation.md` seeded from briefing
-- Created `work-os_status.md` (this file)
 
----
-
-## Current State
-
-Project is in **pre-build / spec phase**. No code has been written yet. The briefing is complete and covers full schema, auth, translation, calendar sync, settings, PWA, and Railway deploy config.
+Full v1 build:
+- Next.js 16 app scaffolded with TypeScript + Tailwind
+- Prisma 7 schema (User, UserSettings, Tone, CalendarConnection, EventMapping, PendingBooking)
+- NextAuth v5 (Google OAuth + PrismaAdapter + `isApproved` gate)
+- Admin page at `/admin` — protected to `alex@fafo-studio.com`, one-click approval + Welcome email
+- Resend emails: `ApprovalPending` on signup, `Welcome` on approval
+- Translation feature: `/translation` page + `/api/transcribe` (Whisper) + `/api/translate` (Claude)
+- Calendar sync: ported from Calypso (`google.ts`, `microsoft.ts`, `sync-engine.ts`, `ical.ts`, `freebusy.ts`)
+- Worker: `src/workers/sync-worker.ts` with node-cron
+- Public availability API: `GET /api/public/availability`
+- Settings UI: API Keys + Tones tabs
+- PWA: `manifest.json` + `sw.js`
+- Railway config: `railway.json` + `Procfile`
+- TypeScript: passes `tsc --noEmit` clean
 
 ---
 
 ## Next Steps
 
-1. Scaffold Next.js app: `npx create-next-app@16 work-os --ts --tailwind --app --src-dir --eslint`
-2. Install dependencies (see briefing)
-3. Set up Prisma schema + `prisma migrate dev --name init`
-4. Implement Auth (NextAuth v5 + Prisma adapter + Google provider)
-5. Add approval middleware + Resend emails
-6. Build Translation feature (`/translation`, `/api/transcribe`, `/api/translate`)
-7. Port Calypso calendar sync (`lib/google.ts`, `lib/microsoft.ts`, `lib/sync-engine.ts`)
-8. Build Settings UI (API Keys, Calendar, Tones tabs)
-9. Add PWA manifest + service worker
-10. Configure Railway deploy (web + worker services)
+1. **Set up Railway** — create project, add Postgres service, set env vars (see below)
+2. **Run first migration** — `npx prisma migrate dev --name init` locally, then `prisma migrate deploy` on Railway
+3. **Add icons** — add `public/icon-192.png` and `public/icon-512.png` for PWA
+4. **Add Google OAuth redirect URI** — `https://work-os.fafo-studio.com/api/auth/callback/google` in Google Console
+5. **Test end-to-end** — signup → approval email → admin approves → welcome email → translation works
+
+---
+
+## Required Environment Variables
+
+| Variable | Notes |
+|----------|-------|
+| `DATABASE_URL` | Railway Postgres connection string |
+| `NEXTAUTH_URL` | `https://work-os.fafo-studio.com` |
+| `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
+| `GOOGLE_CLIENT_ID` | Google OAuth app |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth app |
+| `RESEND_API_KEY` | Resend dashboard |
+| `SYNC_INTERVAL_MINUTES` | Optional, default 15 |
+| `USER_TIMEZONE` | Optional, default UTC (for availability API) |
+| `PUBLIC_API_SECRET` | Secret for `/api/public/*` endpoints |
 
 ---
 
 ## Open Questions / Blockers
 
-- Does a Calypso codebase exist locally to port from, or should the calendar sync be built from scratch?
-- Microsoft OAuth: will there be a shared app-level client, or is it fully per-user?
-- Admin approval flow: who is the admin and how do they approve users (direct DB update, admin UI, or email link)?
+- None blocking. PWA icons need to be added before install prompt works.

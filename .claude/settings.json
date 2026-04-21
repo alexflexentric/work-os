@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(prisma *)",
+      "Bash(npx prisma *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(touch *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(ls)",
+      "Bash(cat *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(chmod *)",
+      "Bash(echo *)",
+      "Bash(which *)",
+      "Bash(pwd)",
+      "Bash(gh *)"
+    ],
+    "ask": [
+      "Bash(rm *)"
+    ]
+  }
+}

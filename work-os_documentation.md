@@ -2,7 +2,9 @@
 
 **Version**: 1.0 (2026-04-21)
 **Deployment**: https://work-os.fafo-studio.com (Railway)
-**Stack**: Next.js 16 App Router, TypeScript 5, Tailwind + Shadcn, Prisma 6 + Postgres, NextAuth v5, Anthropic SDK, OpenAI Whisper, Resend, Google Calendar / MS Graph
+**Stack**: Next.js 16 App Router, TypeScript 5, Tailwind CSS v4, Prisma 7 + Postgres, NextAuth v5 beta, Anthropic SDK, OpenAI Whisper, Resend, Google Calendar / MS Graph
+
+**Admin**: `alex@fafo-studio.com` — only this email can access `/admin`
 
 ---
 

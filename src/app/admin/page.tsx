@@ -38,7 +38,7 @@ export default async function AdminPage() {
           </p>
         ) : (
           <ul className="space-y-3">
-            {pending.map((user) => (
+            {pending.map((user: typeof pending[number]) => (
               <li
                 key={user.id}
                 className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-5 py-4"

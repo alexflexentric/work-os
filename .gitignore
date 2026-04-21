@@ -1,0 +1,5 @@
+# Ignore all .md files except work-os project files
+*.md
+!work-os_briefing.md
+!work-os_documentation.md
+!work-os_status.md

@@ -7,7 +7,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Work OS",
-  description: "Translation + Calendar — your personal work OS",
+  description: "AI Powered Productivity Platform",
   manifest: "/manifest.json",
 };
 

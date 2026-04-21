@@ -25,15 +25,18 @@ Full v1 build — **deployed and green on Railway** ✓
 - **Fixed**: Implicit `any` TS error in admin page map (`typeof pending[number]`)
 - **Fixed**: `prisma generate` added to build script so Prisma types exist during `next build`
 - **Fixed**: Switched to `@prisma/adapter-pg` driver adapter — Prisma 7 requires it for the default `engineType = "client"`
+- **Fixed**: Added missing `@react-email/render` dep — was crashing `createUser` event on signup
+- Custom domain live: `work-os.fafo-studio.com`
+- DB migrated (`20260421212915_init`) — all tables created in Railway Postgres EU West
+- `DATABASE_URL` switched to private Railway endpoint (no egress fees)
+- Tagline updated to "AI Powered Productivity Platform"
 
 ---
 
 ## Next Steps
 
-1. **Add custom domain** — Railway dashboard → web service → Settings → Networking → add `work-os.fafo-studio.com`, then point DNS
-2. **Run first DB migration** — `npx prisma migrate dev --name init` locally, then it auto-runs on deploy via `prisma migrate deploy` in startCommand
-3. **Test end-to-end** — signup → approval email → admin approves → welcome email → translation works
-4. **Add PWA icons** — `public/icon-192.png` and `public/icon-512.png`
+1. **Test end-to-end** — sign in → approval email → go to `/admin` → approve → welcome email → translation works
+2. **Add PWA icons** — `public/icon-192.png` and `public/icon-512.png`
 
 ---
 
@@ -63,6 +66,5 @@ Full v1 build — **deployed and green on Railway** ✓
 
 ## Open Questions / Blockers
 
-- Build `50f32e71` in progress — may still fail if there are other TS errors in Calypso-ported files
-- PWA icons need to be added before install prompt works
+- PWA icons not yet added (`public/icon-192.png`, `public/icon-512.png`) — install prompt won't work until then
 - Google OAuth app is "unverified" (fine for personal/small team use; would need Google verification for public launch)

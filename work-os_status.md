@@ -6,7 +6,8 @@
 
 ## Just Completed
 
-Full v1 build + Railway deployment fixes:
+Full v1 build — **deployed and green on Railway** ✓
+
 - Next.js 16 app scaffolded with TypeScript + Tailwind
 - Prisma 7 schema (User, UserSettings, Tone, CalendarConnection, EventMapping, PendingBooking)
 - NextAuth v5 (Google OAuth + PrismaAdapter + `isApproved` gate)
@@ -23,18 +24,16 @@ Full v1 build + Railway deployment fixes:
 - **Fixed**: Node engine constraint (`>=22.12.0`) for Prisma 7 compatibility
 - **Fixed**: Implicit `any` TS error in admin page map (`typeof pending[number]`)
 - **Fixed**: `prisma generate` added to build script so Prisma types exist during `next build`
-
-Deployment is in progress (build `50f32e71`). Expected to succeed.
+- **Fixed**: Switched to `@prisma/adapter-pg` driver adapter — Prisma 7 requires it for the default `engineType = "client"`
 
 ---
 
 ## Next Steps
 
-1. **Confirm build green** — watch Railway logs at the URL from the last `railway up` output
-2. **Add custom domain** — Railway dashboard → web service → Settings → Networking → add `work-os.fafo-studio.com`, then point DNS
-3. **Run first DB migration** — `npx prisma migrate dev --name init` locally, then it auto-runs on deploy via `prisma migrate deploy` in startCommand
+1. **Add custom domain** — Railway dashboard → web service → Settings → Networking → add `work-os.fafo-studio.com`, then point DNS
+2. **Run first DB migration** — `npx prisma migrate dev --name init` locally, then it auto-runs on deploy via `prisma migrate deploy` in startCommand
+3. **Test end-to-end** — signup → approval email → admin approves → welcome email → translation works
 4. **Add PWA icons** — `public/icon-192.png` and `public/icon-512.png`
-5. **Test end-to-end** — signup → approval email → admin approves → welcome email → translation works
 
 ---
 

@@ -13,7 +13,7 @@ export default async function Home() {
     <main className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 w-full max-w-sm text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Work OS</h1>
-        <p className="text-gray-500 text-sm mb-8">Personal productivity platform</p>
+        <p className="text-gray-500 text-sm mb-8">AI Powered Productivity Platform</p>
         <form
           action={async () => {
             "use server";

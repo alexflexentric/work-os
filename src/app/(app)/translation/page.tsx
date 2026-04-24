@@ -81,12 +81,21 @@ export default function TranslationPage() {
   const [result, setResult] = useState<{ meta: string; subject?: string; body: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [hasAnthropicKey, setHasAnthropicKey] = useState(true);
+  const [hasOpenAIKey, setHasOpenAIKey] = useState(true);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => {
+        setHasAnthropicKey(!!s.anthropicApiKey);
+        setHasOpenAIKey(!!s.openaiApiKey);
+      })
+      .catch(() => {});
     fetch("/api/tones")
       .then((r) => r.json())
       .then((data) => {
@@ -215,6 +224,28 @@ export default function TranslationPage() {
   return (
     <div className="max-w-xl mx-auto py-6 px-4 space-y-6">
 
+      {/* Setup banner */}
+      {(!hasAnthropicKey || !hasOpenAIKey) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-3">
+          <span className="text-lg leading-none mt-0.5">⚙️</span>
+          <div>
+            {!hasAnthropicKey && (
+              <p>
+                <strong>Anthropic API key missing</strong> — translation won&apos;t work.{" "}
+              </p>
+            )}
+            {!hasOpenAIKey && (
+              <p>
+                <strong>OpenAI API key missing</strong> — voice dictation won&apos;t work.{" "}
+              </p>
+            )}
+            <a href="/settings" className="underline font-medium mt-1 inline-block">
+              Go to Settings →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Your text */}
       <div>
         <SectionLabel>Your text</SectionLabel>
@@ -288,7 +319,7 @@ export default function TranslationPage() {
       {/* Translate button */}
       <button
         onClick={handleTranslate}
-        disabled={loading || !input.trim()}
+        disabled={loading || !input.trim() || !hasAnthropicKey}
         className="w-full bg-[#E91E63] hover:bg-[#D81B60] disabled:opacity-40 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
       >
         {loading ? "Working…" : "Translate"}

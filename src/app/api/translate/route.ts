@@ -15,23 +15,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 400 });
   }
 
-  const { input, targetLanguage, format, toneId } = await req.json();
+  const { input, targetLanguage, format, toneId, toneInstructions, toneName } = await req.json();
   if (!input) return NextResponse.json({ error: "No input text" }, { status: 400 });
 
-  const tone = toneId
-    ? settings.user.tones.find((t) => t.id === toneId)
-    : null;
+  const dbTone = toneId ? settings.user.tones.find((t) => t.id === toneId) : null;
+  const resolvedToneName = dbTone?.name ?? toneName ?? "";
+  const resolvedToneInstructions = dbTone?.instructions ?? toneInstructions ?? "";
 
   const formatInstructions: Record<string, string> = {
     chat: "Respond conversationally and concisely, as a short chat message.",
-    email: 'Respond with a JSON object: {"subject": "...", "body": "..."}',
+    email: 'Respond with a JSON object only: {"subject": "...", "body": "..."}',
     note: "Respond as a concise structured note.",
   };
 
   const systemPrompt = [
     `You are a professional translator and writer.`,
     targetLanguage ? `Output language: ${targetLanguage}.` : "",
-    tone ? `Tone: ${tone.name}. ${tone.instructions}` : "",
+    resolvedToneName ? `Tone: ${resolvedToneName}. ${resolvedToneInstructions}` : "",
     formatInstructions[format] ?? "",
   ]
     .filter(Boolean)

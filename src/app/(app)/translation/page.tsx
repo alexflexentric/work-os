@@ -36,10 +36,10 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
         active
-          ? "bg-pink-100 text-pink-700"
-          : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+          ? "bg-[--accent] text-[--accent-foreground]"
+          : "border border-[--border] text-[--muted-foreground] hover:bg-[--muted] hover:text-[--foreground]"
       }`}
     >
       {children}
@@ -49,7 +49,7 @@ function Pill({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-2">
+    <p className="text-xs font-medium text-[--muted-foreground] mb-2">
       {children}
     </p>
   );
@@ -209,24 +209,26 @@ export default function TranslationPage() {
     : "";
 
   return (
-    <div className="max-w-xl mx-auto py-6 px-4 space-y-6">
+    <div className="max-w-xl space-y-6">
+      <h1 className="text-3xl font-normal text-[--foreground]" style={{ fontFamily: "'Charter', 'Georgia', serif" }}>
+        Translation
+      </h1>
 
       {/* Setup banner */}
       {(!hasAnthropicKey || !hasOpenAIKey) && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-3">
-          <span className="text-lg leading-none mt-0.5">⚙️</span>
+        <div className="rounded-lg border border-[--border] bg-[--muted] px-4 py-3 text-sm text-[--foreground] flex items-start gap-3">
           <div>
             {!hasAnthropicKey && (
-              <p>
-                <strong>Anthropic API key missing</strong> — translation won&apos;t work.{" "}
+              <p className="text-[--foreground]">
+                <span className="font-medium">Anthropic API key missing</span> — translation won&apos;t work.
               </p>
             )}
             {!hasOpenAIKey && (
-              <p>
-                <strong>OpenAI API key missing</strong> — voice dictation won&apos;t work.{" "}
+              <p className="text-[--foreground]">
+                <span className="font-medium">OpenAI API key missing</span> — voice dictation won&apos;t work.
               </p>
             )}
-            <a href="/settings" className="underline font-medium mt-1 inline-block">
+            <a href="/settings" className="text-[--link] underline mt-1 inline-block text-sm">
               Go to Settings →
             </a>
           </div>
@@ -245,15 +247,15 @@ export default function TranslationPage() {
             }}
             placeholder="Hi, please help me with…"
             rows={5}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm resize-none bg-white focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="w-full border border-[--border] rounded-lg px-4 py-3 pr-12 text-sm resize-none bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus:ring-1 focus:ring-[--ring]"
           />
           <button
             onClick={toggleRecording}
             title={recording ? "Stop" : "Record"}
-            className={`absolute bottom-3 right-3 p-2 rounded-lg transition-colors ${
+            className={`absolute bottom-3 right-3 p-1.5 rounded-md transition-colors ${
               recording
-                ? "bg-red-100 text-red-500 animate-pulse"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                ? "bg-[--destructive]/10 text-[--destructive] animate-pulse"
+                : "text-[--muted-foreground] hover:bg-[--muted] hover:text-[--foreground]"
             }`}
           >
             {recording ? (
@@ -295,9 +297,9 @@ export default function TranslationPage() {
       <div>
         <SectionLabel>Tone</SectionLabel>
         {tones.length === 0 ? (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-[--muted-foreground]">
             No tones yet.{" "}
-            <a href="/settings" className="underline text-gray-500 hover:text-gray-700">
+            <a href="/settings" className="underline text-[--link]">
               Add tones in Settings →
             </a>
           </p>
@@ -305,7 +307,7 @@ export default function TranslationPage() {
           <select
             value={toneId}
             onChange={(e) => setToneId(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus:ring-1 focus:ring-[--ring]"
           >
             {tones.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -318,28 +320,26 @@ export default function TranslationPage() {
       <button
         onClick={handleTranslate}
         disabled={loading || !input.trim() || !hasAnthropicKey}
-        className="w-full bg-[#E91E63] hover:bg-[#D81B60] disabled:opacity-40 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
+        className="px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40"
       >
         {loading ? "Working…" : "Translate"}
       </button>
 
       {/* Result */}
       {result && (
-        <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+        <div className="border border-[--border] rounded-lg p-5 space-y-4 bg-[--card]">
           {result.meta && (
-            <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium">
-              {result.meta}
-            </p>
+            <p className="text-xs text-[--muted-foreground]">{result.meta}</p>
           )}
 
           {result.subject && (
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1">Subject</p>
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm text-gray-800">{result.subject}</p>
+              <p className="text-xs font-medium text-[--muted-foreground] mb-1">Subject</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm text-[--foreground]">{result.subject}</p>
                 <button
                   onClick={() => copy(result.subject!)}
-                  className="shrink-0 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded-lg"
+                  className="shrink-0 text-xs text-[--muted-foreground] hover:text-[--foreground] border border-[--border] px-2 py-1 rounded-md transition-colors"
                 >
                   Copy
                 </button>
@@ -348,26 +348,26 @@ export default function TranslationPage() {
           )}
 
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-gray-400 font-medium mb-1">Output</p>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap">{result.body}</p>
+            <p className="text-xs font-medium text-[--muted-foreground] mb-1">Output</p>
+            <p className="text-sm text-[--foreground] whitespace-pre-wrap leading-relaxed">{result.body}</p>
           </div>
 
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => copy(copyAllText)}
-              className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-[--muted-foreground] hover:text-[--foreground] border border-[--border] px-3 py-1.5 rounded-md transition-colors"
             >
-              {copied ? "Copied!" : "Copy"}
+              {copied ? "Copied" : "Copy"}
             </button>
             <button
               onClick={toggleSpeak}
-              className={`text-xs border px-3 py-1.5 rounded-lg transition-colors ${
+              className={`text-xs border px-3 py-1.5 rounded-md transition-colors ${
                 speaking
-                  ? "border-pink-300 text-pink-600 bg-pink-50"
-                  : "border-gray-200 text-gray-500 hover:text-gray-700"
+                  ? "border-[--accent] text-[--accent]"
+                  : "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"
               }`}
             >
-              {speaking ? "⏹ Stop" : "🔊 Speak"}
+              {speaking ? "Stop" : "Speak"}
             </button>
           </div>
         </div>

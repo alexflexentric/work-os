@@ -29,24 +29,23 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Admin — Pending approvals</h1>
+    <div className="min-h-screen bg-[--background] p-10">
+      <div className="max-w-xl mx-auto space-y-6">
+        <h1 className="text-3xl font-normal text-[--foreground]" style={{ fontFamily: "'Charter', 'Georgia', serif" }}>
+          Pending approvals
+        </h1>
         {pending.length === 0 ? (
-          <p className="text-gray-500 bg-white rounded-xl border border-gray-100 p-6 text-center">
+          <p className="text-sm text-[--muted-foreground] border border-[--border] rounded-lg p-6">
             No pending users.
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="border border-[--border] rounded-lg overflow-hidden divide-y divide-[--border]">
             {pending.map((user: typeof pending[number]) => (
-              <li
-                key={user.id}
-                className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-5 py-4"
-              >
+              <li key={user.id} className="flex items-center justify-between bg-[--card] px-5 py-4">
                 <div>
-                  <p className="font-medium text-gray-900">{user.name ?? "—"}</p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-sm font-medium text-[--foreground]">{user.name ?? "—"}</p>
+                  <p className="text-xs text-[--muted-foreground] font-mono mt-0.5">{user.email}</p>
+                  <p className="text-xs text-[--muted-foreground] mt-0.5">
                     Signed up {user.createdAt.toLocaleDateString()}
                   </p>
                 </div>
@@ -54,7 +53,7 @@ export default async function AdminPage() {
                   <input type="hidden" name="userId" value={user.id} />
                   <button
                     type="submit"
-                    className="bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    className="text-sm font-medium px-4 py-2 rounded-lg border border-[--border] text-[--foreground] hover:bg-[--muted] transition-colors"
                   >
                     Approve
                   </button>

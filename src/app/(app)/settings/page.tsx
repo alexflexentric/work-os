@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 
 type Tab = "keys" | "tones";
-
 type Tone = { id: string; name: string; instructions: string };
 
 export default function SettingsPage() {
@@ -66,7 +65,7 @@ export default function SettingsPage() {
     setEditingId(null);
   }
 
-  async function moveТone(index: number, direction: -1 | 1) {
+  async function moveTone(index: number, direction: -1 | 1) {
     const swapIndex = index + direction;
     if (swapIndex < 0 || swapIndex >= tones.length) return;
     const a = tones[index];
@@ -102,19 +101,24 @@ export default function SettingsPage() {
     { key: "microsoftTenantId", label: "Microsoft Tenant ID", placeholder: "common" },
   ];
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+  const inputCls = "w-full border border-[--border] rounded-lg px-3 py-2 text-sm bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus:ring-1 focus:ring-[--ring] font-mono";
 
-      <div className="flex border-b border-gray-200">
+  return (
+    <div className="max-w-xl space-y-6">
+      <h1 className="text-3xl font-normal text-[--foreground]" style={{ fontFamily: "'Charter', 'Georgia', serif" }}>
+        Settings
+      </h1>
+
+      {/* Tabs */}
+      <div className="flex border-b border-[--border]">
         {tabs.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
               tab === id
-                ? "border-sky-500 text-sky-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-[--foreground] text-[--foreground] font-medium"
+                : "border-transparent text-[--muted-foreground] hover:text-[--foreground]"
             }`}
           >
             {label}
@@ -123,122 +127,98 @@ export default function SettingsPage() {
       </div>
 
       {tab === "keys" && (
-        <form onSubmit={saveSettings} className="space-y-4 bg-white border border-gray-100 rounded-xl p-6">
+        <form onSubmit={saveSettings} className="space-y-4">
           {keyFields.map(({ key, label, placeholder }) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+              <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">{label}</label>
               <input
                 type="password"
                 value={settings[key] ?? ""}
                 onChange={(e) => setSettings((prev) => ({ ...prev, [key]: e.target.value }))}
                 placeholder={placeholder}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+                className={inputCls}
               />
             </div>
           ))}
           <button
             type="submit"
             disabled={saving}
-            className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40 transition-opacity"
           >
-            {saved ? "Saved ✓" : saving ? "Saving…" : "Save"}
+            {saved ? "Saved" : saving ? "Saving…" : "Save"}
           </button>
         </form>
       )}
 
       {tab === "tones" && (
-        <div className="space-y-4">
-          <ul className="space-y-2">
-            {tones.map((tone) => (
-              <li key={tone.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4">
-                {editingId === tone.id ? (
-                  <div className="space-y-2">
-                    <input
-                      value={editDraft.name}
-                      onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
-                    />
-                    <textarea
-                      value={editDraft.instructions}
-                      onChange={(e) => setEditDraft((p) => ({ ...p, instructions: e.target.value }))}
-                      rows={3}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => saveEdit(tone.id)}
-                        className="bg-sky-500 hover:bg-sky-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-gray-500 hover:text-gray-700 text-xs px-3 py-1.5 rounded-lg border border-gray-200 transition-colors"
-                      >
-                        Cancel
-                      </button>
+        <div className="space-y-3">
+          {tones.length > 0 && (
+            <ul className="space-y-px border border-[--border] rounded-lg overflow-hidden">
+              {tones.map((tone, i) => (
+                <li key={tone.id} className="bg-[--card] border-b border-[--border] last:border-0 px-4 py-3">
+                  {editingId === tone.id ? (
+                    <div className="space-y-2">
+                      <input
+                        value={editDraft.name}
+                        onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))}
+                        className={inputCls}
+                      />
+                      <textarea
+                        value={editDraft.instructions}
+                        onChange={(e) => setEditDraft((p) => ({ ...p, instructions: e.target.value }))}
+                        rows={3}
+                        className={inputCls + " resize-none"}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => saveEdit(tone.id)}
+                          className="px-3 py-1.5 rounded-md text-xs font-medium bg-[--foreground] text-[--background] hover:opacity-90 transition-opacity"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1.5 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{tone.name}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{tone.instructions}</p>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[--foreground]">{tone.name}</p>
+                        <p className="text-xs text-[--muted-foreground] mt-0.5 leading-relaxed">{tone.instructions}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => moveTone(i, -1)} disabled={i === 0} className="p-1 text-[--muted-foreground] hover:text-[--foreground] disabled:opacity-25 transition-colors" title="Move up">↑</button>
+                        <button onClick={() => moveTone(i, 1)} disabled={i === tones.length - 1} className="p-1 text-[--muted-foreground] hover:text-[--foreground] disabled:opacity-25 transition-colors" title="Move down">↓</button>
+                        <button onClick={() => startEdit(tone)} className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors ml-1">Edit</button>
+                        <button onClick={() => deleteTone(tone.id)} className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--destructive] transition-colors">Delete</button>
+                      </div>
                     </div>
-                    <div className="flex gap-1.5 ml-4 shrink-0">
-                      <button
-                        onClick={() => moveТone(tones.indexOf(tone), -1)}
-                        disabled={tones.indexOf(tone) === 0}
-                        className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
-                        title="Move up"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => moveТone(tones.indexOf(tone), 1)}
-                        disabled={tones.indexOf(tone) === tones.length - 1}
-                        className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
-                        title="Move down"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        onClick={() => startEdit(tone)}
-                        className="text-xs text-gray-400 hover:text-sky-600 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteTone(tone.id)}
-                        className="text-xs text-gray-400 hover:text-red-400 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <form onSubmit={addTone} className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
-            <p className="text-sm font-medium text-gray-700">Add tone</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form onSubmit={addTone} className="border border-[--border] rounded-lg p-4 space-y-3">
+            <p className="text-xs font-medium text-[--muted-foreground]">Add tone</p>
             <input
               value={newTone.name}
               onChange={(e) => setNewTone((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Name (e.g. Formal)"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+              placeholder="Name"
+              className={inputCls}
             />
             <textarea
               value={newTone.instructions}
               onChange={(e) => setNewTone((p) => ({ ...p, instructions: e.target.value }))}
-              placeholder="Instructions (e.g. Use professional, concise language)"
+              placeholder="Instructions — e.g. polite and professional, no emojis"
               rows={2}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
+              className={inputCls + " resize-none"}
             />
-            <button
-              type="submit"
-              className="bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
+            <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 transition-opacity">
               Add
             </button>
           </form>

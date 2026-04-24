@@ -8,9 +8,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session.user.isApproved) redirect("/approval-pending");
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex">
       <Nav />
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8">{children}</main>
+      <main className="flex-1 ml-[220px] px-10 py-10 max-w-[900px]">
+        {children}
+      </main>
     </div>
   );
 }

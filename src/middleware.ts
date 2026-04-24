@@ -6,6 +6,8 @@ const PUBLIC_PREFIXES = [
   "/api/public",
   "/api/webhooks",
   "/api/health",
+  "/api/setup",
+  "/setup",
 ];
 
 export function middleware(req: NextRequest) {

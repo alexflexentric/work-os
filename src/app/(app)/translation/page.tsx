@@ -249,6 +249,17 @@ export default function TranslationPage() {
             rows={5}
             className="w-full border border-[--border] rounded-lg px-4 py-3 pr-12 text-sm resize-none bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2"
           />
+          {input && (
+            <button
+              onClick={() => setInput("")}
+              title="Clear"
+              className="absolute top-3 right-3 p-1 rounded-md text-[--muted-foreground] hover:text-[--foreground] hover:bg-[--muted] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
           <button
             onClick={toggleRecording}
             title={recording ? "Stop" : "Record"}

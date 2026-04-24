@@ -1,3 +1,11 @@
-import { handlers } from "@/auth";
+import { buildAuthHandlers } from "@/auth";
 
-export const { GET, POST } = handlers;
+export async function GET(req: Request) {
+  const handlers = await buildAuthHandlers();
+  return handlers.GET(req);
+}
+
+export async function POST(req: Request) {
+  const handlers = await buildAuthHandlers();
+  return handlers.POST(req);
+}

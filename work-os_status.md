@@ -1,42 +1,56 @@
 # Work OS - Status
 
-**Last updated**: 2026-04-21
+**Last updated**: 2026-04-24
 
 ---
 
 ## Just Completed
 
-Full v1 build — **deployed and green on Railway** ✓
-
-- Next.js 16 app scaffolded with TypeScript + Tailwind
-- Prisma 7 schema (User, UserSettings, Tone, CalendarConnection, EventMapping, PendingBooking)
-- NextAuth v5 (Google OAuth + PrismaAdapter + `isApproved` gate)
-- Admin page at `/admin` — protected to `alex@fafo-studio.com`, one-click approval + Welcome email
-- Resend emails: `ApprovalPending` on signup, `Welcome` on approval
-- Translation feature: `/translation` page + `/api/transcribe` (Whisper) + `/api/translate` (Claude)
-- Calendar sync: ported from Calypso (`google.ts`, `microsoft.ts`, `sync-engine.ts`, `ical.ts`, `freebusy.ts`)
-- Worker: `src/workers/sync-worker.ts` with node-cron
-- Public availability API: `GET /api/public/availability`
-- Settings UI: API Keys + Tones tabs
-- PWA: `manifest.json` + `sw.js`
-- Railway project created, Postgres service added, all env vars set
-- Google Cloud project `work-os` created with OAuth 2.0 client (in production, unverified)
-- **Fixed**: Node engine constraint (`>=22.12.0`) for Prisma 7 compatibility
-- **Fixed**: Implicit `any` TS error in admin page map (`typeof pending[number]`)
-- **Fixed**: `prisma generate` added to build script so Prisma types exist during `next build`
-- **Fixed**: Switched to `@prisma/adapter-pg` driver adapter — Prisma 7 requires it for the default `engineType = "client"`
-- **Fixed**: Added missing `@react-email/render` dep — was crashing `createUser` event on signup
-- Custom domain live: `work-os.fafo-studio.com`
-- DB migrated (`20260421212915_init`) — all tables created in Railway Postgres EU West
-- `DATABASE_URL` switched to private Railway endpoint (no egress fees)
-- Tagline updated to "AI Powered Productivity Platform"
+- Settings page refactored: segmented tab control (API Keys / Tones). Formats temporarily removed.
+- Translation page: static format pills (temporary), clear (X) button added to text area
+- Translate API: hardcoded format instructions (temporary)
+- **Fix**: Removed `prisma migrate deploy` from build script — was failing at build time
+- MD files updated to reflect new architecture (setup wizard, AppConfig, dual provider)
 
 ---
 
-## Next Steps
+## In Progress
 
-1. **Test end-to-end** — sign in → approval email → go to `/admin` → approve → welcome email → translation works
-2. **Add PWA icons** — `public/icon-192.png` and `public/icon-512.png`
+Large feature branch — **setup wizard + dual OAuth + settings restructure + calendar**
+
+### Stage 1 — AppConfig schema + setup wizard (next)
+- [ ] Prisma migration: add `AppConfig` model (singleton, Google + Microsoft credentials)
+- [ ] Prisma migration: add `masterCalendarProvider String @default("google")` to `UserSettings`; remove `microsoftClientId/Secret/TenantId` from `UserSettings`
+- [ ] `/setup` page — multi-step wizard with in-UI OAuth app instructions:
+  - Step 1: Google (client ID + secret, instructions + redirect URIs shown)
+  - Step 2: Microsoft (client ID + secret + tenant ID, instructions + redirect URIs shown)
+  - At least one required; each step skippable
+  - Step 3: Done → redirect to sign-in
+- [ ] `GET/POST /api/setup` route — unauthenticated GET to check if setup is complete; POST saves to `AppConfig` (admin only once set up)
+- [ ] Middleware update: if `AppConfig` empty → redirect all routes to `/setup`
+
+### Stage 2 — Dynamic NextAuth providers
+- [ ] Refactor `src/auth.ts` to read provider credentials from `AppConfig` at request time
+- [ ] Support Google, Microsoft, or both based on what is configured
+- [ ] Ensure Microsoft scopes include `Calendars.ReadWrite` and `offline_access`
+- [ ] Ensure approval gate applies to Microsoft sign-ups
+
+### Stage 3 — Settings page UI
+- [ ] Sidebar nav: General › API Keys, Translation › Formats + Tones, Calendar
+- [ ] Restore Formats panel (create / edit / reorder)
+- [ ] Calendar section: master account info, primary calendar selector, sync interval, iCal connections
+
+### Stage 4 — Translation page + translate API
+- [ ] Format: static pills → dropdown (DB-driven, like Tone)
+- [ ] `/api/translate`: restore `formatId` DB lookup
+
+### Stage 5 — Calendar API routes + availability
+- [ ] `GET /api/calendar/calendars` — list calendars from master account (Google or Microsoft)
+- [ ] `GET/POST /api/calendar/connections` — list / create iCal connections
+- [ ] `DELETE/PATCH /api/calendar/connections/[id]` — delete / toggle active
+- [ ] `GET /api/public/availability` — route to Google or Microsoft based on `masterCalendarProvider`
+- [ ] Add `listMicrosoftCalendars(userId)` to `lib/microsoft.ts`
+- [ ] Update sync worker to sync iCal into master calendar
 
 ---
 
@@ -48,23 +62,23 @@ Full v1 build — **deployed and green on Railway** ✓
 
 ---
 
-## Required Environment Variables
+## Required Environment Variables (Railway)
+
+Only infra-level — OAuth credentials moved to DB via `/setup`
 
 | Variable | Notes |
 |----------|-------|
 | `DATABASE_URL` | Railway Postgres connection string |
 | `NEXTAUTH_URL` | `https://work-os.fafo-studio.com` |
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` | Google OAuth app (`work-os` project) |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth app (`work-os` project) |
 | `RESEND_API_KEY` | Resend dashboard |
 | `SYNC_INTERVAL_MINUTES` | Optional, default 15 |
-| `USER_TIMEZONE` | Optional, default UTC (for availability API) |
+| `USER_TIMEZONE` | Optional, default UTC |
 | `PUBLIC_API_SECRET` | Secret for `/api/public/*` endpoints |
 
 ---
 
 ## Open Questions / Blockers
 
-- PWA icons not yet added (`public/icon-192.png`, `public/icon-512.png`) — install prompt won't work until then
-- Google OAuth app is "unverified" (fine for personal/small team use; would need Google verification for public launch)
+- None currently — ready to start Stage 1
+- PWA icons still not added (`public/icon-192.png`, `public/icon-512.png`)

@@ -66,6 +66,29 @@ export default function SettingsPage() {
     setEditingId(null);
   }
 
+  async function moveТone(index: number, direction: -1 | 1) {
+    const swapIndex = index + direction;
+    if (swapIndex < 0 || swapIndex >= tones.length) return;
+    const a = tones[index];
+    const b = tones[swapIndex];
+    const newTones = [...tones];
+    newTones[index] = { ...b };
+    newTones[swapIndex] = { ...a };
+    setTones(newTones);
+    await Promise.all([
+      fetch(`/api/tones/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: swapIndex }),
+      }),
+      fetch(`/api/tones/${b.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: index }),
+      }),
+    ]);
+  }
+
   const tabs: { id: Tab; label: string }[] = [
     { id: "keys", label: "API Keys" },
     { id: "tones", label: "Tones" },
@@ -162,7 +185,23 @@ export default function SettingsPage() {
                       <p className="font-medium text-gray-900 text-sm">{tone.name}</p>
                       <p className="text-gray-500 text-xs mt-0.5">{tone.instructions}</p>
                     </div>
-                    <div className="flex gap-2 ml-4 shrink-0">
+                    <div className="flex gap-1.5 ml-4 shrink-0">
+                      <button
+                        onClick={() => moveТone(tones.indexOf(tone), -1)}
+                        disabled={tones.indexOf(tone) === 0}
+                        className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+                        title="Move up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => moveТone(tones.indexOf(tone), 1)}
+                        disabled={tones.indexOf(tone) === tones.length - 1}
+                        className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+                        title="Move down"
+                      >
+                        ↓
+                      </button>
                       <button
                         onClick={() => startEdit(tone)}
                         className="text-xs text-gray-400 hover:text-sky-600 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"

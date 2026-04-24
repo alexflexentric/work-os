@@ -302,13 +302,15 @@ export default function TranslationPage() {
             </a>
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <select
+            value={toneId}
+            onChange={(e) => setToneId(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-pink-200"
+          >
             {tones.map((t) => (
-              <Pill key={t.id} active={toneId === t.id} onClick={() => setToneId(t.id)}>
-                {t.name}
-              </Pill>
+              <option key={t.id} value={t.id}>{t.name}</option>
             ))}
-          </div>
+          </select>
         )}
       </div>
 

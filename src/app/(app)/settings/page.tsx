@@ -101,7 +101,7 @@ export default function SettingsPage() {
     { key: "microsoftTenantId", label: "Microsoft Tenant ID", placeholder: "common" },
   ];
 
-  const inputCls = "w-full border border-[--border] rounded-lg px-3 py-2 text-sm bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus:ring-1 focus:ring-[--ring] font-mono";
+  const inputCls = "w-full border border-[--border] rounded-lg px-3 py-2 text-sm bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 font-mono";
 
   return (
     <div className="max-w-xl space-y-6">
@@ -109,16 +109,16 @@ export default function SettingsPage() {
         Settings
       </h1>
 
-      {/* Tabs */}
-      <div className="flex border-b border-[--border]">
+      {/* Tabs — segmented control */}
+      <div className="inline-flex bg-[--muted] rounded-lg p-1 gap-0.5">
         {tabs.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-1.5 text-sm rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-1 ${
               tab === id
-                ? "border-[--foreground] text-[--foreground] font-medium"
-                : "border-transparent text-[--muted-foreground] hover:text-[--foreground]"
+                ? "bg-[--background] text-[--foreground] shadow-sm font-medium"
+                : "text-[--muted-foreground] hover:text-[--foreground]"
             }`}
           >
             {label}

@@ -30,13 +30,23 @@ export default function Nav() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
                 active
-                  ? "bg-[--muted] text-[--foreground] font-medium"
+                  ? "bg-[--accent-subtle] text-[--accent-subtle-foreground]"
                   : "text-[--muted-foreground] hover:bg-[--muted] hover:text-[--foreground]"
               }`}
             >
-              <Icon size={15} strokeWidth={1.75} />
+              {active && (
+                <span
+                  className="absolute left-0 inset-y-1 w-0.5 rounded-full"
+                  style={{ background: "var(--accent)" }}
+                />
+              )}
+              <Icon
+                size={15}
+                strokeWidth={1.75}
+                style={active ? { color: "var(--accent)" } : undefined}
+              />
               {label}
             </Link>
           );

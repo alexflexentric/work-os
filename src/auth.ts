@@ -19,6 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           prompt: "consent",
         },
       },
+      checks: ["pkce"],
     }),
   ],
   events: {

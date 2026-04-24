@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [tones, setTones] = useState<Tone[]>([]);
   const [newTone, setNewTone] = useState({ name: "", instructions: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", instructions: "" });
 
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then(setSettings);
@@ -47,6 +49,21 @@ export default function SettingsPage() {
   async function deleteTone(id: string) {
     await fetch(`/api/tones/${id}`, { method: "DELETE" });
     setTones((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  function startEdit(tone: Tone) {
+    setEditingId(tone.id);
+    setEditDraft({ name: tone.name, instructions: tone.instructions });
+  }
+
+  async function saveEdit(id: string) {
+    await fetch(`/api/tones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editDraft),
+    });
+    setTones((prev) => prev.map((t) => (t.id === id ? { ...t, ...editDraft } : t)));
+    setEditingId(null);
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -110,17 +127,57 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <ul className="space-y-2">
             {tones.map((tone) => (
-              <li key={tone.id} className="flex items-start justify-between bg-white border border-gray-100 rounded-xl px-5 py-4">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">{tone.name}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{tone.instructions}</p>
-                </div>
-                <button
-                  onClick={() => deleteTone(tone.id)}
-                  className="text-gray-300 hover:text-red-400 transition-colors ml-4 mt-0.5"
-                >
-                  ✕
-                </button>
+              <li key={tone.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4">
+                {editingId === tone.id ? (
+                  <div className="space-y-2">
+                    <input
+                      value={editDraft.name}
+                      onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+                    />
+                    <textarea
+                      value={editDraft.instructions}
+                      onChange={(e) => setEditDraft((p) => ({ ...p, instructions: e.target.value }))}
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-300"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveEdit(tone.id)}
+                        className="bg-sky-500 hover:bg-sky-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-gray-500 hover:text-gray-700 text-xs px-3 py-1.5 rounded-lg border border-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{tone.name}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{tone.instructions}</p>
+                    </div>
+                    <div className="flex gap-2 ml-4 shrink-0">
+                      <button
+                        onClick={() => startEdit(tone)}
+                        className="text-xs text-gray-400 hover:text-sky-600 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteTone(tone.id)}
+                        className="text-xs text-gray-400 hover:text-red-400 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -12,20 +12,6 @@ const LANGUAGES = [
 
 const FORMATS = ["Chat", "Email", "Note"];
 
-const BUILT_IN_TONES = [
-  {
-    id: "informal",
-    name: "Informal",
-    instructions:
-      "warm, casual, and conversational. Always starts with Hi, Hello, or Hey. In Dutch, always uses 'je' instead of 'u'. Never use emojis or emoticons.",
-  },
-  {
-    id: "formal",
-    name: "Formal",
-    instructions:
-      "polite and professional but approachable, avoiding stiff corporate language. In Dutch uses 'u'.",
-  },
-];
 
 const LANG_CODES: Record<string, string> = {
   Dutch: "nl-NL",
@@ -73,8 +59,8 @@ export default function TranslationPage() {
   const [input, setInput] = useState("");
   const [lang, setLang] = useState("Dutch");
   const [format, setFormat] = useState("Chat");
-  const [tones, setTones] = useState<Tone[]>(BUILT_IN_TONES);
-  const [toneId, setToneId] = useState("informal");
+  const [tones, setTones] = useState<Tone[]>([]);
+  const [toneId, setToneId] = useState("");
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -99,8 +85,9 @@ export default function TranslationPage() {
     fetch("/api/tones")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setTones([...BUILT_IN_TONES, ...data]);
+        if (Array.isArray(data)) {
+          setTones(data);
+          if (data.length > 0) setToneId(data[0].id);
         }
       })
       .catch(() => {});
@@ -307,13 +294,22 @@ export default function TranslationPage() {
       {/* Tone */}
       <div>
         <SectionLabel>Tone</SectionLabel>
-        <div className="flex flex-wrap gap-2">
-          {tones.map((t) => (
-            <Pill key={t.id} active={toneId === t.id} onClick={() => setToneId(t.id)}>
-              {t.name}
-            </Pill>
-          ))}
-        </div>
+        {tones.length === 0 ? (
+          <p className="text-xs text-gray-400">
+            No tones yet.{" "}
+            <a href="/settings" className="underline text-gray-500 hover:text-gray-700">
+              Add tones in Settings →
+            </a>
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tones.map((t) => (
+              <Pill key={t.id} active={toneId === t.id} onClick={() => setToneId(t.id)}>
+                {t.name}
+              </Pill>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Translate button */}

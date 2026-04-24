@@ -36,10 +36,10 @@ function Pill({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
         active
-          ? "bg-[--accent] text-[--accent-foreground]"
-          : "border border-[--border] text-[--muted-foreground] hover:bg-[--muted] hover:text-[--foreground]"
+          ? "bg-accent text-accent-foreground border border-accent"
+          : "border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
     >
       {children}
@@ -252,11 +252,10 @@ export default function TranslationPage() {
           <button
             onClick={toggleRecording}
             title={recording ? "Stop" : "Record"}
-            style={recording ? { color: "var(--accent)" } : undefined}
-            className={`absolute bottom-3 right-3 p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 ${
+            className={`absolute bottom-3 right-3 p-1.5 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
               recording
-                ? "bg-[--accent-subtle]"
-                : "text-[--muted-foreground] hover:bg-[--muted] hover:text-[--foreground]"
+                ? "bg-accent-subtle text-accent-subtle-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             {recording ? (
@@ -322,7 +321,7 @@ export default function TranslationPage() {
       <button
         onClick={handleTranslate}
         disabled={loading || !input.trim() || !hasAnthropicKey}
-        className="px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40"
+        className="px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-foreground text-background hover:opacity-90 disabled:opacity-35 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       >
         {loading ? "Working…" : "Translate"}
       </button>

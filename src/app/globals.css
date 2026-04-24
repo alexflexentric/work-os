@@ -49,7 +49,12 @@
   --color-card: var(--card);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-subtle-foreground: var(--accent-subtle-foreground);
+  --color-accent-border: var(--accent-border);
   --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
 }
 
 * {

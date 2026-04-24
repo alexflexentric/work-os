@@ -9,30 +9,27 @@ export async function POST(req: Request) {
 
   const settings = await prisma.userSettings.findUnique({
     where: { userId: session.userId },
-    include: { user: { include: { tones: true } } },
   });
   if (!settings?.anthropicApiKey) {
     return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 400 });
   }
 
-  const { input, targetLanguage, format, toneId, toneInstructions, toneName } = await req.json();
+  const { input, targetLanguage, formatId, toneId } = await req.json();
   if (!input) return NextResponse.json({ error: "No input text" }, { status: 400 });
 
-  const dbTone = toneId ? settings.user.tones.find((t) => t.id === toneId) : null;
-  const resolvedToneName = dbTone?.name ?? toneName ?? "";
-  const resolvedToneInstructions = dbTone?.instructions ?? toneInstructions ?? "";
+  const [tone, format] = await Promise.all([
+    toneId ? prisma.tone.findFirst({ where: { id: toneId, userId: session.userId } }) : null,
+    formatId ? prisma.format.findFirst({ where: { id: formatId, userId: session.userId } }) : null,
+  ]);
 
-  const formatInstructions: Record<string, string> = {
-    chat: "Respond conversationally and concisely, as a short chat message.",
-    email: 'Respond with a JSON object only: {"subject": "...", "body": "..."}',
-    note: "Respond as a concise structured note.",
-  };
+  const isEmail = format?.name.toLowerCase() === "email";
 
   const systemPrompt = [
     `You are a professional translator and writer.`,
     targetLanguage ? `Output language: ${targetLanguage}.` : "",
-    resolvedToneName ? `Tone: ${resolvedToneName}. ${resolvedToneInstructions}` : "",
-    formatInstructions[format] ?? "",
+    tone ? `Tone: ${tone.name}. ${tone.instructions}` : "",
+    format ? format.instructions : "",
+    isEmail ? 'Respond with a JSON object only: {"subject": "...", "body": "..."}' : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -46,5 +43,5 @@ export async function POST(req: Request) {
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "";
-  return NextResponse.json({ text });
+  return NextResponse.json({ text, isEmail });
 }

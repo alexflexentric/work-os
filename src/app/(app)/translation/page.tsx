@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { X } from "lucide-react";
 
 const LANGUAGES = [
   { code: "NL", label: "Dutch" },
@@ -9,9 +10,6 @@ const LANGUAGES = [
   { code: "UA", label: "Ukrainian" },
   { code: "RU", label: "Russian" },
 ];
-
-const FORMATS = ["Chat", "Email", "Note"];
-
 
 const LANG_CODES: Record<string, string> = {
   Dutch: "nl-NL",
@@ -23,6 +21,7 @@ const LANG_CODES: Record<string, string> = {
 };
 
 type Tone = { id: string; name: string; instructions: string };
+type Format = { id: string; name: string; instructions: string };
 
 function Pill({
   active,
@@ -55,12 +54,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+const selectCls = "border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 appearance-none pr-8 cursor-pointer";
+const selectStyle = { backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" };
+
 export default function TranslationPage() {
   const [input, setInput] = useState("");
   const [lang, setLang] = useState("Dutch");
-  const [format, setFormat] = useState("Chat");
   const [tones, setTones] = useState<Tone[]>([]);
   const [toneId, setToneId] = useState("");
+  const [formats, setFormats] = useState<Format[]>([]);
+  const [formatId, setFormatId] = useState("");
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -91,6 +94,15 @@ export default function TranslationPage() {
         }
       })
       .catch(() => {});
+    fetch("/api/formats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFormats(data);
+          if (data.length > 0) setFormatId(data[0].id);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   async function handleTranslate() {
@@ -99,23 +111,23 @@ export default function TranslationPage() {
     setResult(null);
     try {
       const tone = tones.find((t) => t.id === toneId);
+      const format = formats.find((f) => f.id === formatId);
       const res = await fetch("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           input,
           targetLanguage: lang,
-          format: format.toLowerCase(),
-          toneInstructions: tone?.instructions,
-          toneName: tone?.name,
+          formatId,
+          toneId,
         }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      const meta = `${format} · ${lang} · ${tone?.name ?? ""}`;
+      const meta = [format?.name, lang, tone?.name].filter(Boolean).join(" · ");
 
-      if (format === "Email") {
+      if (data.isEmail) {
         try {
           const parsed = JSON.parse(data.text);
           setResult({ meta, subject: parsed.subject, body: parsed.body });
@@ -249,6 +261,15 @@ export default function TranslationPage() {
             rows={5}
             className="w-full border border-[--border] rounded-lg px-4 py-3 pr-12 text-sm resize-none bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2"
           />
+          {input && (
+            <button
+              onClick={() => setInput("")}
+              title="Clear"
+              className="absolute top-3 right-3 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          )}
           <button
             onClick={toggleRecording}
             title={recording ? "Stop" : "Record"}
@@ -284,13 +305,25 @@ export default function TranslationPage() {
       {/* Format */}
       <div>
         <SectionLabel>Format</SectionLabel>
-        <div className="flex gap-2">
-          {FORMATS.map((f) => (
-            <Pill key={f} active={format === f} onClick={() => setFormat(f)}>
-              {f}
-            </Pill>
-          ))}
-        </div>
+        {formats.length === 0 ? (
+          <p className="text-xs text-[--muted-foreground]">
+            No formats yet.{" "}
+            <a href="/settings" className="underline text-[--link]">
+              Add formats in Settings →
+            </a>
+          </p>
+        ) : (
+          <select
+            value={formatId}
+            onChange={(e) => setFormatId(e.target.value)}
+            className={selectCls}
+            style={selectStyle}
+          >
+            {formats.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Tone */}
@@ -307,8 +340,8 @@ export default function TranslationPage() {
           <select
             value={toneId}
             onChange={(e) => setToneId(e.target.value)}
-            className="border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 appearance-none pr-8 cursor-pointer"
-            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
+            className={selectCls}
+            style={selectStyle}
           >
             {tones.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>

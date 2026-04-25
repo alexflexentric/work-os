@@ -6,10 +6,15 @@ export async function GET() {
   const session = await auth();
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const settings = await prisma.userSettings.findUnique({
-    where: { userId: session.userId },
-  });
-  return NextResponse.json(settings ?? {});
+  const [settings, account] = await Promise.all([
+    prisma.userSettings.findUnique({ where: { userId: session.userId } }),
+    prisma.account.findFirst({ where: { userId: session.userId }, select: { provider: true } }),
+  ]);
+
+  const detectedProvider = account?.provider === "microsoft-entra-id" ? "microsoft" : "google";
+  const masterCalendarProvider = settings?.masterCalendarProvider ?? detectedProvider;
+
+  return NextResponse.json({ ...(settings ?? {}), masterCalendarProvider });
 }
 
 export async function POST(req: Request) {

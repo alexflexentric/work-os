@@ -5,6 +5,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { sendApprovalPendingEmail, sendAdminApprovalNotification } from "@/lib/email";
 
+const ADMIN_EMAIL = "alex@flexentric.com";
+
 // Static auth() export — reads sessions from DB, no provider config needed.
 // Used throughout the app for session checks.
 export const { auth, signIn, signOut } = NextAuth({
@@ -14,7 +16,9 @@ export const { auth, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ session, user }) {
       session.userId = user.id;
-      session.user.isApproved = (user as unknown as { isApproved: boolean }).isApproved;
+      // Admin is always approved regardless of DB state (avoids race condition on first sign-in)
+      session.user.isApproved =
+        (user as unknown as { isApproved: boolean }).isApproved || user.email === ADMIN_EMAIL;
       return session;
     },
   },
@@ -23,7 +27,6 @@ export const { auth, signIn, signOut } = NextAuth({
 
 // Dynamic handler — reads provider credentials from AppConfig at request time.
 // Used only by /api/auth/[...nextauth]/route.ts.
-const ADMIN_EMAIL = "alex@flexentric.com";
 
 export async function buildAuthHandlers() {
   const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });

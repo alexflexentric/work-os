@@ -20,7 +20,7 @@ const MicrosoftIcon = () => (
 export default function SignInButtons() {
   return (
     <div className="space-y-2">
-      <button onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/translation" })} className={btnCls}>
+      <button onClick={() => signIn("microsoft-entra-id", { callbackUrl: "/home" })} className={btnCls}>
         <MicrosoftIcon /> Continue with Microsoft
       </button>
       <p className="text-xs text-[--muted-foreground] mt-3">

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function ApprovalPendingPage() {
   const session = await auth();
   if (!session?.user) redirect("/");
-  if (session.user.isApproved) redirect("/translation");
+  if (session.user.isApproved) redirect("/home");
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[--background]">

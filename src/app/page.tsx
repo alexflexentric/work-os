@@ -8,7 +8,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
   const session = await auth();
   if (session?.user) {
     if (!session.user.isApproved) redirect("/approval-pending");
-    redirect("/translation");
+    redirect("/home");
   }
 
   const { error } = await searchParams;

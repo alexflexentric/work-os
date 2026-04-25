@@ -773,6 +773,32 @@ function CalendarPanel({
           />
         </div>
 
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">
+            Calendar view hours
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={23}
+              value={settings.calendarStartHour ?? "0"}
+              onChange={(e) => setSettings((prev) => ({ ...prev, calendarStartHour: e.target.value }))}
+              className={inputCls + " w-20 text-center"}
+            />
+            <span className="text-xs text-[--muted-foreground]">to</span>
+            <input
+              type="number"
+              min={1}
+              max={24}
+              value={settings.calendarEndHour ?? "24"}
+              onChange={(e) => setSettings((prev) => ({ ...prev, calendarEndHour: e.target.value }))}
+              className={inputCls + " w-20 text-center"}
+            />
+            <span className="text-xs text-[--muted-foreground]">e.g. 7 to 22</span>
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={saving}

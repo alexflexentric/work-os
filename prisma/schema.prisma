@@ -45,6 +45,8 @@ model UserSettings {
   masterCalendarColor     String?
   calendarId              String?
   syncInterval            Int       @default(15)
+  calendarStartHour       Int       @default(0)
+  calendarEndHour         Int       @default(24)
   calendarSyncedAt        DateTime?
   availabilitySchedule    Json?
   createdAt               DateTime  @default(now())

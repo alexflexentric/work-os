@@ -27,7 +27,6 @@ const APPLE_COLORS = [
   "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#5AC8FA",
   "#007AFF", "#AF52DE", "#FF2D55", "#A2845E", "#8E8E93",
 ];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -105,16 +104,20 @@ function layoutDay(events: StoredEvent[]): LayoutEvent[] {
 export default function CalendarPage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [events, setEvents] = useState<StoredEvent[]>([]);
-  const [settings, setSettings] = useState<{ masterCalendarColor?: string }>({});
+  const [settings, setSettings] = useState<{ masterCalendarColor?: string; calendarStartHour?: number; calendarEndHour?: number }>({});
   const [connections, setConnections] = useState<Connection[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [nowLine, setNowLine] = useState(0);
+  const [nowLine, setNowLine] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const weekEnd = weekDays[6];
   const todayStr = localDate(new Date());
+
+  const startHour = Math.max(0, Math.min(23, settings.calendarStartHour ?? 0));
+  const endHour = Math.max(startHour + 1, Math.min(24, settings.calendarEndHour ?? 24));
+  const visibleHours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
 
   // Color map: source id → hex
   const colorMap = useMemo<Record<string, string>>(() => {
@@ -145,21 +148,18 @@ export default function CalendarPage() {
     });
   }, []);
 
-  // Scroll to 7am on first mount
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 7 * HOUR_H;
-  }, []);
-
-  // Update "now" line every minute
+  // Update "now" line every minute, relative to startHour; null if outside visible range
   useEffect(() => {
     const update = () => {
       const d = new Date();
-      setNowLine(d.getHours() * HOUR_H + (d.getMinutes() / 60) * HOUR_H);
+      const h = d.getHours() + d.getMinutes() / 60;
+      if (h < startHour || h > endHour) { setNowLine(null); return; }
+      setNowLine((h - startHour) * HOUR_H);
     };
     update();
     const id = setInterval(update, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [startHour, endHour]);
 
   // Load events from DB when week changes, then trigger background sync
   useEffect(() => {
@@ -337,15 +337,15 @@ export default function CalendarPage() {
               Loading events…
             </div>
           ) : (
-            <div className="flex" style={{ height: 24 * HOUR_H }}>
+            <div className="flex" style={{ height: visibleHours.length * HOUR_H }}>
 
               {/* Time gutter */}
               <div className="w-12 shrink-0 relative select-none">
-                {HOURS.map((h) => (
+                {visibleHours.map((h) => (
                   <div
                     key={h}
                     className="absolute right-2 text-[10px] text-[--muted-foreground]"
-                    style={{ top: h * HOUR_H - 7 }}
+                    style={{ top: (h - startHour) * HOUR_H - 7 }}
                   >
                     {fmtHour(h)}
                   </div>
@@ -364,16 +364,16 @@ export default function CalendarPage() {
                     className={`flex-1 relative border-l border-[--border] ${isToday ? "bg-accent/[0.03]" : ""}`}
                   >
                     {/* Hour lines */}
-                    {HOURS.map((h) => (
+                    {visibleHours.map((h) => (
                       <div
                         key={h}
                         className="absolute left-0 right-0 border-t border-[--border]/40"
-                        style={{ top: h * HOUR_H }}
+                        style={{ top: (h - startHour) * HOUR_H }}
                       />
                     ))}
 
                     {/* Current time line */}
-                    {isToday && (
+                    {isToday && nowLine !== null && (
                       <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: nowLine }}>
                         <div className="relative h-px bg-accent">
                           <div className="absolute -top-[3px] -left-[3px] w-1.5 h-1.5 rounded-full bg-accent" />
@@ -388,7 +388,7 @@ export default function CalendarPage() {
                       const topMin = start.getHours() * 60 + start.getMinutes();
                       const endMin = end.getHours() * 60 + end.getMinutes();
                       const durMin = Math.max(endMin - topMin, 15);
-                      const top = (topMin / 60) * HOUR_H;
+                      const top = (topMin / 60 - startHour) * HOUR_H;
                       const height = Math.max((durMin / 60) * HOUR_H, 18);
                       const w = 100 / ev.totalCols;
                       const left = ev.col * w;

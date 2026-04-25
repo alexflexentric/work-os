@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const allowed = ["anthropicApiKey", "openaiApiKey", "masterCalendarProvider", "masterCalendarColor", "calendarId", "syncInterval"];
+  const allowed = ["anthropicApiKey", "openaiApiKey", "masterCalendarProvider", "masterCalendarColor", "calendarId", "syncInterval", "calendarStartHour", "calendarEndHour"];
   const data = Object.fromEntries(
     Object.entries(body).filter(([k]) => allowed.includes(k))
   );

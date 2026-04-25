@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "UserSettings" ADD COLUMN "calendarStartHour" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "UserSettings" ADD COLUMN "calendarEndHour" INTEGER NOT NULL DEFAULT 24;

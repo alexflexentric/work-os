@@ -24,7 +24,7 @@ export default function Nav() {
         </div>
         <nav className="flex-1 py-4 px-2 space-y-0.5">
           {links.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || (href !== "/home" && pathname.startsWith(href));
+            const active = pathname === href || (href !== "/home" && !!pathname?.startsWith(href));
             return (
               <Link
                 key={href}

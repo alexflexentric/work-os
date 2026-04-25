@@ -782,7 +782,7 @@ function CalendarPanel({
               type="number"
               min={0}
               max={23}
-              value={settings.calendarStartHour ?? "0"}
+              value={String(settings.calendarStartHour ?? 0)}
               onChange={(e) => setSettings((prev) => ({ ...prev, calendarStartHour: parseInt(e.target.value) || 0 }))}
               className={inputCls + " w-20 text-center"}
             />
@@ -791,7 +791,7 @@ function CalendarPanel({
               type="number"
               min={1}
               max={24}
-              value={settings.calendarEndHour ?? "24"}
+              value={String(settings.calendarEndHour ?? 24)}
               onChange={(e) => setSettings((prev) => ({ ...prev, calendarEndHour: parseInt(e.target.value) || 24 }))}
               className={inputCls + " w-20 text-center"}
             />

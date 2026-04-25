@@ -6,6 +6,14 @@
 
 ## Just Completed
 
+**Booking UI polish** (2026-04-25)
+
+- Timezone display bug fixed: `localIso + "Z"` was shifting times by +2h in Brussels (UTC+2); replaced with `wallClockToUtcDate()` that parses ISO components and formats via UTC
+- Duration pill active state now shows accent color (was `bg-[--foreground]` → `bg-accent text-white`)
+- Schedule grid now displays Mon → Sun (was Sun-first); underlying data indices unchanged
+
+---
+
 **Booking page: full internal booking flow** (2026-04-25)
 
 - `/api/availability` — new authenticated GET route (mirrors public endpoint, avoids CORS); accepts `slug`, `duration`, `days`

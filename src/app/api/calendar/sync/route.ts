@@ -110,13 +110,8 @@ export async function POST() {
   for (const conn of connections) {
     if (!conn.icalUrl) continue;
     try {
-      const icalEvents = await fetchAndParseIcal(conn.icalUrl);
-      const inWindow = icalEvents.filter(
-        (e) =>
-          e.status !== "cancelled" &&
-          e.end.getTime() >= windowStart.getTime() &&
-          e.start.getTime() <= windowEnd.getTime()
-      );
+      const icalEvents = await fetchAndParseIcal(conn.icalUrl, windowStart, windowEnd);
+      const inWindow = icalEvents.filter((e) => e.status !== "cancelled");
       const currentIds = new Set(inWindow.map((e) => e.uid));
 
       for (const ev of inWindow) {

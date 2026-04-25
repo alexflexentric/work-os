@@ -6,6 +6,16 @@
 
 ## Just Completed
 
+**iCal recurring event expansion** (2026-04-25)
+
+- `lib/ical.ts` — rewrote to expand `RRULE` into individual instances within the sync window instead of storing only the master (first) occurrence
+- Handles `FREQ=DAILY/WEEKLY/MONTHLY/YEARLY`, `INTERVAL`, `UNTIL`, `COUNT`, `BYDAY`, `BYMONTHDAY`
+- Handles `EXDATE` (per-instance exclusions) and `RECURRENCE-ID` exception VEVENTs (moved or cancelled instances)
+- Each expanded instance stored with stable `uid = originalUid:instanceStartIso` — allows the DB upsert to address each instance independently
+- `fetchAndParseIcal` now accepts optional `windowStart`/`windowEnd` and passes them through; sync route passes the existing 30-back/120-ahead window
+- No new npm dependency — RRULE expansion implemented inline
+- First sync after deploy will clean up old single-occurrence rows and create the expanded set
+
 **Calendar view hour range + settings save fixes** (2026-04-25)
 
 - `calendarStartHour` (default 0) and `calendarEndHour` (default 24) added to `UserSettings` — calendar view renders only the visible hour range

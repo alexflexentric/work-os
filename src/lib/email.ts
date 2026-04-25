@@ -4,8 +4,8 @@ import WelcomeEmail from "@/emails/Welcome";
 import AdminApprovalNotificationEmail from "@/emails/AdminApprovalNotification";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
-const FROM = "Work OS <support@fafo-studio.com>";
-const ADMIN_EMAIL = "alex@fafo-studio.com";
+const FROM = "Work OS <work-os@flexentric.com>";
+const ADMIN_EMAIL = "alex@flexentric.com";
 
 export async function sendApprovalPendingEmail(email: string, name?: string) {
   await resend.emails.send({
@@ -17,7 +17,7 @@ export async function sendApprovalPendingEmail(email: string, name?: string) {
 }
 
 export async function sendAdminApprovalNotification(email: string, name?: string) {
-  const adminUrl = `${process.env.NEXTAUTH_URL ?? "https://work-os.fafo-studio.com"}/admin`;
+  const adminUrl = `${process.env.NEXTAUTH_URL ?? "https://work-os.flexentric.com"}/admin`;
   await resend.emails.send({
     from: FROM,
     to: [ADMIN_EMAIL],

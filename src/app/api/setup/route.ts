@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-const ADMIN_EMAIL = "alex@fafo-studio.com";
+const ADMIN_EMAIL = "alex@flexentric.com";
 
 export async function GET() {
   const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });

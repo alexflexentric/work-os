@@ -6,6 +6,24 @@
 
 ## Just Completed
 
+**Google disabled + admin auto-approve + email sender** (2026-04-25)
+
+- Google sign-in/sign-up commented out across `auth.ts`, `SignInButtons.tsx`, `setup/page.tsx` — Microsoft-only
+- Setup wizard is now a 2-step flow (Microsoft → Done)
+- Admin (`alex@flexentric.com`) is auto-approved on first sign-in via `createUser` event
+- Email FROM changed to `work-os@flexentric.com`
+
+**Domain migration + org restriction** (2026-04-25)
+
+- All `fafo-studio.com` references replaced with `flexentric.com` across source, emails, and docs
+- `ALLOWED_EMAIL_DOMAIN` env var controls which email domain can sign in (set to `flexentric.com`)
+- Sign-in callback in `src/auth.ts` rejects non-`@flexentric.com` emails and redirects to `/?error=OrgRestricted`
+- Sign-in page shows friendly message: "Sign-in is limited to @flexentric.com email addresses"
+- Admin email updated to `alex@flexentric.com` in `/admin`, `/api/setup`, and `email.ts`
+- Deployment URL: `https://work-os.flexentric.com`
+
+---
+
 **Calendar view + event cache** (2026-04-25)
 
 - New `CalendarEvent` DB table — unified event cache per user (`source = "master"` or `CalendarConnection.id`)
@@ -27,12 +45,12 @@
 
 ## Current State
 
-All core features live at `work-os.fafo-studio.com`.
+All core features live at `work-os.flexentric.com`.
 
 ### What works
 - `/setup` wizard — Google/Microsoft OAuth credential onboarding
 - Sign-in — Google and/or Microsoft (whichever is configured in AppConfig)
-- Admin approval gate — `alex@fafo-studio.com` approves users; email notification sent on signup
+- Admin approval gate — `alex@flexentric.com` approves users; email notification sent on signup
 - Translation — text + voice (Whisper) → Claude, with DB-driven formats and tones
 - Settings — API Keys, Import/Export, Formats (CRUD + reorder), Tones (CRUD + reorder), Calendar (color pickers, primary calendar, sync interval, iCal connections CRUD)
 - Calendar view — week view, color-coded by source, syncs from master + iCal on load
@@ -41,17 +59,16 @@ All core features live at `work-os.fafo-studio.com`.
 ### Known limitations / open tasks
 - **No background calendar sync** — `sync-worker.ts` (node-cron) is not deployed on Railway. Calendar syncs only when the user opens the page or clicks Refresh. Fix: add a Railway Cron service calling `POST /api/calendar/sync`.
 - **iCal → master calendar sync (legacy)** — `sync-engine.ts` only supports Google as sync target; Microsoft-master users' iCal feeds aren't written to their MS calendar. The new `CalendarEvent` table shows them correctly in the UI regardless.
-- **Admin email mismatch** — `/admin` page checks for `alex@fafo-studio.com` but the actual user email is `alex@flexentric.com`. Admin page is inaccessible.
+- ~~**Admin email mismatch**~~ — fixed, admin gate now checks `alex@flexentric.com`
 - **PWA icons** — `public/icon-192.png` and `public/icon-512.png` not yet added.
 
 ---
 
 ## Next Steps (in priority order)
 
-1. **Railway Cron for calendar sync** — add a Cron service calling `POST https://work-os.fafo-studio.com/api/calendar/sync` every 15 min
-2. **Fix admin email** — change the admin gate in `/admin/page.tsx` from `alex@fafo-studio.com` to `alex@flexentric.com`
-3. **iCal → Microsoft Calendar sync** — update `sync-engine.ts` to support Microsoft as sync target (requires `targetMicrosoftCalendarId` field + MS Graph event CRUD in sync loop)
-4. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png`
+1. **Railway Cron for calendar sync** — add a Cron service calling `POST https://work-os.flexentric.com/api/calendar/sync` every 15 min
+2. **iCal → Microsoft Calendar sync** — update `sync-engine.ts` to support Microsoft as sync target (requires `targetMicrosoftCalendarId` field + MS Graph event CRUD in sync loop)
+3. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png`
 
 ---
 

@@ -9,7 +9,7 @@ import {
 } from "@react-email/components";
 
 export default function WelcomeEmail({ name }: { name?: string }) {
-  const url = process.env.NEXTAUTH_URL ?? "https://work-os.fafo-studio.com";
+  const url = process.env.NEXTAUTH_URL ?? "https://work-os.flexentric.com";
   return (
     <Html>
       <Head />
@@ -26,7 +26,7 @@ export default function WelcomeEmail({ name }: { name?: string }) {
           <Hr />
           <Text style={{ fontSize: 12, color: "#6b7280" }}>
             Questions? Contact{" "}
-            <a href="mailto:support@fafo-studio.com">support@fafo-studio.com</a>
+            <a href="mailto:support@flexentric.com">support@flexentric.com</a>
           </Text>
         </Container>
       </Body>

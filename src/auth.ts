@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
+// import Google from "next-auth/providers/google"; // Google disabled — Microsoft-only
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
@@ -23,27 +23,20 @@ export const { auth, signIn, signOut } = NextAuth({
 
 // Dynamic handler — reads provider credentials from AppConfig at request time.
 // Used only by /api/auth/[...nextauth]/route.ts.
+const ADMIN_EMAIL = "alex@flexentric.com";
+
 export async function buildAuthHandlers() {
   const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
   const providers = [];
 
-  const googleClientId = config?.googleClientId ?? process.env.GOOGLE_CLIENT_ID;
-  const googleClientSecret = config?.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET;
-  if (googleClientId && googleClientSecret) {
-    providers.push(
-      Google({
-        clientId: googleClientId,
-        clientSecret: googleClientSecret,
-        authorization: {
-          params: {
-            scope: "openid email profile https://www.googleapis.com/auth/calendar",
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      })
-    );
-  }
+  // Google provider disabled — Microsoft-only. Re-enable if migrating to Google.
+  // const googleClientId = config?.googleClientId ?? process.env.GOOGLE_CLIENT_ID;
+  // const googleClientSecret = config?.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET;
+  // if (googleClientId && googleClientSecret) {
+  //   providers.push(Google({ clientId: googleClientId, clientSecret: googleClientSecret,
+  //     authorization: { params: { scope: "openid email profile https://www.googleapis.com/auth/calendar",
+  //       access_type: "offline", prompt: "consent" } } }));
+  // }
 
   const msClientId = config?.microsoftClientId ?? process.env.MICROSOFT_CLIENT_ID;
   const msClientSecret = config?.microsoftClientSecret ?? process.env.MICROSOFT_CLIENT_SECRET;
@@ -69,15 +62,25 @@ export async function buildAuthHandlers() {
     providers,
     events: {
       async createUser({ user }) {
-        if (user.email) {
-          await Promise.all([
-            sendApprovalPendingEmail(user.email, user.name ?? undefined),
-            sendAdminApprovalNotification(user.email, user.name ?? undefined),
-          ]);
+        if (!user.email) return;
+        if (user.email === ADMIN_EMAIL) {
+          await prisma.user.update({ where: { id: user.id! }, data: { isApproved: true } });
+          return;
         }
+        await Promise.all([
+          sendApprovalPendingEmail(user.email, user.name ?? undefined),
+          sendAdminApprovalNotification(user.email, user.name ?? undefined),
+        ]);
       },
     },
     callbacks: {
+      async signIn({ user }) {
+        const domain = process.env.ALLOWED_EMAIL_DOMAIN;
+        if (domain && !user.email?.endsWith(`@${domain}`)) {
+          return "/?error=OrgRestricted";
+        }
+        return true;
+      },
       async session({ session, user }) {
         session.userId = user.id;
         session.user.isApproved = (user as unknown as { isApproved: boolean }).isApproved;

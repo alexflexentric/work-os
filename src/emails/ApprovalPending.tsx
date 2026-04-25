@@ -20,7 +20,7 @@ export default function ApprovalPendingEmail({ name }: { name?: string }) {
           <Hr />
           <Text style={{ fontSize: 12, color: "#6b7280" }}>
             Questions? Reply to this email or contact{" "}
-            <a href="mailto:support@fafo-studio.com">support@fafo-studio.com</a>
+            <a href="mailto:support@flexentric.com">support@flexentric.com</a>
           </Text>
         </Container>
       </Body>

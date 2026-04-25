@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const BASE_URL = typeof window !== "undefined" ? window.location.origin : "https://work-os.fafo-studio.com";
+const BASE_URL = typeof window !== "undefined" ? window.location.origin : "https://work-os.flexentric.com";
 
-type Step = "google" | "microsoft" | "done";
+type Step = "microsoft" | "done"; // "google" disabled — Microsoft-only
 
 function CopyField({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -42,17 +42,18 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
 
 export default function SetupPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("google");
+  const [step, setStep] = useState<Step>("microsoft");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  // Google state disabled — Microsoft-only. Re-enable if migrating to Google.
+  // const [googleClientId, setGoogleClientId] = useState("");
+  // const [googleClientSecret, setGoogleClientSecret] = useState("");
+  // const googleRedirect = `${BASE_URL}/api/auth/callback/google`;
   const [microsoftClientId, setMicrosoftClientId] = useState("");
   const [microsoftClientSecret, setMicrosoftClientSecret] = useState("");
   const [microsoftTenantId, setMicrosoftTenantId] = useState("");
 
-  const googleRedirect = `${BASE_URL}/api/auth/callback/google`;
   const microsoftRedirect = `${BASE_URL}/api/auth/callback/microsoft-entra-id`;
 
   async function save(data: Record<string, string>) {
@@ -74,11 +75,8 @@ export default function SetupPage() {
     return true;
   }
 
-  async function handleGoogleContinue() {
-    if (!googleClientId || !googleClientSecret) { setStep("microsoft"); return; }
-    const ok = await save({ googleClientId, googleClientSecret });
-    if (ok) setStep("microsoft");
-  }
+  // Google handler disabled — Microsoft-only.
+  // async function handleGoogleContinue() { ... }
 
   async function handleMicrosoftContinue() {
     if (!microsoftClientId || !microsoftClientSecret) { setStep("done"); return; }
@@ -104,71 +102,31 @@ export default function SetupPage() {
 
         {/* Progress */}
         <div className="flex gap-2 items-center">
-          {(["google", "microsoft", "done"] as Step[]).map((s, i) => (
+          {(["microsoft", "done"] as Step[]).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
                 step === s ? "bg-[--foreground] text-[--background]" :
-                ["google", "microsoft", "done"].indexOf(step) > i ? "bg-[--accent] text-[--accent-foreground]" :
+                ["microsoft", "done"].indexOf(step) > i ? "bg-[--accent] text-[--accent-foreground]" :
                 "border border-[--border] text-[--muted-foreground]"
               }`}>
-                {["google", "microsoft", "done"].indexOf(step) > i ? "✓" : i + 1}
+                {["microsoft", "done"].indexOf(step) > i ? "✓" : i + 1}
               </div>
               <span className={`text-xs ${step === s ? "text-[--foreground] font-medium" : "text-[--muted-foreground]"}`}>
-                {s === "google" ? "Google" : s === "microsoft" ? "Microsoft" : "Done"}
+                {s === "microsoft" ? "Microsoft" : "Done"}
               </span>
-              {i < 2 && <div className="w-6 h-px bg-[--border]" />}
+              {i < 1 && <div className="w-6 h-px bg-[--border]" />}
             </div>
           ))}
         </div>
 
-        {/* Step: Google */}
-        {step === "google" && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-base font-medium text-[--foreground] mb-1">Google OAuth</h2>
-              <p className="text-xs text-[--muted-foreground]">Optional — skip if you only want Microsoft sign-in.</p>
-            </div>
-
-            <div className="border border-[--border] rounded-lg p-4 space-y-3 bg-[--muted]/40 text-xs text-[--muted-foreground]">
-              <p className="font-medium text-[--foreground]">How to create a Google OAuth app:</p>
-              <ol className="space-y-1.5 list-decimal list-inside">
-                <li>Go to <strong>console.cloud.google.com</strong> → APIs & Services → Credentials</li>
-                <li>Click <strong>Create Credentials → OAuth client ID</strong></li>
-                <li>Application type: <strong>Web application</strong></li>
-                <li>Add this redirect URI:</li>
-              </ol>
-              <CopyField value={googleRedirect} />
-              <ol className="space-y-1.5 list-decimal list-inside" start={5}>
-                <li>Enable the <strong>Google Calendar API</strong> in APIs & Services → Library</li>
-                <li>Copy the Client ID and Client Secret below</li>
-              </ol>
-            </div>
-
-            <div className="space-y-3">
-              <Field label="Client ID" value={googleClientId} onChange={setGoogleClientId} placeholder="123456789-abc...apps.googleusercontent.com" />
-              <Field label="Client Secret" value={googleClientSecret} onChange={setGoogleClientSecret} placeholder="GOCSPX-..." type="password" />
-            </div>
-
-            {error && <p className="text-xs text-[--destructive]">{error}</p>}
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleGoogleContinue}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40 transition-opacity"
-              >
-                {googleClientId && googleClientSecret ? (saving ? "Saving…" : "Save & Continue") : "Skip"}
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Google step disabled — Microsoft-only. Re-enable if migrating to Google. */}
 
         {/* Step: Microsoft */}
         {step === "microsoft" && (
           <div className="space-y-5">
             <div>
               <h2 className="text-base font-medium text-[--foreground] mb-1">Microsoft Entra ID</h2>
-              <p className="text-xs text-[--muted-foreground]">Optional — skip if you only want Google sign-in.</p>
+              <p className="text-xs text-[--muted-foreground]">Connect your Microsoft Entra app to enable sign-in.</p>
             </div>
 
             <div className="border border-[--border] rounded-lg p-4 space-y-3 bg-[--muted]/40 text-xs text-[--muted-foreground]">
@@ -197,9 +155,6 @@ export default function SetupPage() {
             {error && <p className="text-xs text-[--destructive]">{error}</p>}
 
             <div className="flex gap-3">
-              <button onClick={() => setStep("google")} className="px-4 py-2 rounded-lg text-sm border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors">
-                Back
-              </button>
               <button
                 onClick={handleMicrosoftContinue}
                 disabled={saving}

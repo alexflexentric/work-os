@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-const ADMIN_EMAIL = "alex@fafo-studio.com";
+const ADMIN_EMAIL = "alex@flexentric.com";
 
 export default async function AdminPage() {
   const session = await auth();

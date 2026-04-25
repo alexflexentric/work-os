@@ -1,10 +1,10 @@
 # Work OS - Documentation
 
-**Version**: 1.4 (2026-04-25)
-**Deployment**: https://work-os.fafo-studio.com (Railway)
+**Version**: 1.5 (2026-04-25)
+**Deployment**: https://work-os.flexentric.com (Railway)
 **Stack**: Next.js 16 App Router, TypeScript 5, Tailwind CSS v4, Prisma 7 + Postgres, NextAuth v5 beta, Anthropic SDK, OpenAI Whisper, Resend, Google Calendar / MS Graph
 
-**Admin**: `alex@fafo-studio.com` — only this email can access `/admin`
+**Admin**: `alex@flexentric.com` — only this email can access `/admin`
 
 ---
 
@@ -45,9 +45,10 @@ Only infrastructure-level vars live in Railway. All OAuth credentials are stored
 | Variable | Notes |
 |----------|-------|
 | `DATABASE_URL` | Railway Postgres (private endpoint) |
-| `NEXTAUTH_URL` | `https://work-os.fafo-studio.com` |
+| `NEXTAUTH_URL` | `https://work-os.flexentric.com` |
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
 | `RESEND_API_KEY` | Resend dashboard |
+| `ALLOWED_EMAIL_DOMAIN` | `flexentric.com` — only emails from this domain can sign in |
 | `SYNC_INTERVAL_MINUTES` | Optional, default 15 |
 | `USER_TIMEZONE` | Optional, default UTC |
 | `PUBLIC_API_SECRET` | Secret for `/api/public/*` endpoints |
@@ -109,8 +110,8 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 
 | Provider | Redirect URI |
 |----------|-------------|
-| Google | `https://work-os.fafo-studio.com/api/auth/callback/google` |
-| Microsoft | `https://work-os.fafo-studio.com/api/auth/callback/microsoft-entra-id` |
+| Google | `https://work-os.flexentric.com/api/auth/callback/google` |
+| Microsoft | `https://work-os.flexentric.com/api/auth/callback/microsoft-entra-id` |
 | Google (dev) | `http://localhost:3000/api/auth/callback/google` |
 | Microsoft (dev) | `http://localhost:3000/api/auth/callback/microsoft-entra-id` |
 
@@ -118,8 +119,7 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 
 ## Authentication
 
-- Providers: **Google OAuth** and/or **Microsoft Entra ID** — whichever is configured in `AppConfig`
-- Scopes (Google): `openid email profile https://www.googleapis.com/auth/calendar`
+- Providers: **Microsoft Entra ID** (Google disabled — commented out, re-enable if migrating)
 - Scopes (Microsoft): `openid email profile offline_access Calendars.ReadWrite`
 - Middleware: unauthenticated + no AppConfig → `/setup`; unauthenticated + AppConfig exists → `/`; authenticated + unapproved → `/approval-pending`
 - `createUser` event triggers `sendApprovalPendingEmail()`
@@ -203,10 +203,10 @@ Sidebar navigation with three groups:
 | Template | Trigger |
 |----------|---------|
 | `ApprovalPending` | On new user signup — sent to the new user |
-| `AdminApprovalNotification` | On new user signup — sent to `alex@fafo-studio.com` with link to `/admin` |
+| `AdminApprovalNotification` | On new user signup — sent to `alex@flexentric.com` with link to `/admin` |
 | `Welcome` | On admin approval — sent to the approved user |
 
-Sender: `Work OS <support@fafo-studio.com>`
+Sender: `Work OS <work-os@flexentric.com>`
 
 ---
 
@@ -215,5 +215,5 @@ Sender: `Work OS <support@fafo-studio.com>`
 - Build command (via `package.json`): `prisma generate && next build`
 - Start command (via `railway.json`): `prisma migrate deploy && npm start`
 - One service: `web` (Next.js) — no worker service deployed
-- Custom domain: `work-os.fafo-studio.com`
+- Custom domain: `work-os.flexentric.com`
 - Local dev DB: `.env` points to Railway public proxy (`shinkansen.proxy.rlwy.net:12393`) — `npx prisma migrate dev` and `npx prisma studio` work without any prefix

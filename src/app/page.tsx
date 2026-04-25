@@ -4,12 +4,15 @@ import SignInButtons from "@/components/SignInButtons";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await auth();
   if (session?.user) {
     if (!session.user.isApproved) redirect("/approval-pending");
     redirect("/translation");
   }
+
+  const { error } = await searchParams;
+  const domain = process.env.ALLOWED_EMAIL_DOMAIN;
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[--background]">
@@ -21,6 +24,11 @@ export default async function Home() {
           Work OS
         </h1>
         <p className="text-sm text-[--muted-foreground] mb-8">AI Powered Productivity Platform</p>
+        {error === "OrgRestricted" && (
+          <p className="text-sm text-red-500 mb-6">
+            Sign-in is limited to @{domain ?? "your organisation"} email addresses.
+          </p>
+        )}
         <SignInButtons />
       </div>
     </main>

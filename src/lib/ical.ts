@@ -453,7 +453,7 @@ export function parseIcalText(
   for (const ev of rawEvents) {
     if (ev.recurrenceId !== undefined) {
       let exMap = exceptions.get(ev.uid);
-      if (!exMap) { exMap = new Map(); exceptions.set(ev.uid, exMap); }
+      if (!exMap) { exMap = new Map<number, RawVEvent>(); exceptions.set(ev.uid, exMap); }
       exMap.set(ev.recurrenceId.getTime(), ev);
     } else if (ev.rrule) {
       masters.set(ev.uid, ev);

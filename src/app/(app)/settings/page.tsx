@@ -658,11 +658,11 @@ function CalendarPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-    const saved = await res.json();
-    setSettings((prev) => ({ ...prev, ...saved }));
+    const body = await res.json();
+    if (res.ok) setSettings((prev) => ({ ...prev, ...body }));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(res.ok);
+    if (res.ok) setTimeout(() => setSaved(false), 2000);
   }
 
   async function addConnection(e: React.FormEvent) {

@@ -21,18 +21,27 @@ export async function POST(req: Request) {
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const allowed = ["anthropicApiKey", "openaiApiKey", "masterCalendarProvider", "masterCalendarColor", "calendarId", "syncInterval", "calendarStartHour", "calendarEndHour"];
-  const data = Object.fromEntries(
-    Object.entries(body).filter(([k]) => allowed.includes(k))
-  );
 
-  if (data.calendarStartHour !== undefined) data.calendarStartHour = parseInt(String(data.calendarStartHour)) || 0;
-  if (data.calendarEndHour !== undefined) data.calendarEndHour = parseInt(String(data.calendarEndHour)) || 24;
+  const update = {
+    ...(body.anthropicApiKey !== undefined   && { anthropicApiKey:        String(body.anthropicApiKey) }),
+    ...(body.openaiApiKey !== undefined       && { openaiApiKey:           String(body.openaiApiKey) }),
+    ...(body.masterCalendarProvider !== undefined && { masterCalendarProvider: String(body.masterCalendarProvider) }),
+    ...(body.masterCalendarColor !== undefined && { masterCalendarColor:   body.masterCalendarColor == null ? null : String(body.masterCalendarColor) }),
+    ...(body.calendarId !== undefined         && { calendarId:             body.calendarId == null ? null : String(body.calendarId) }),
+    ...(body.syncInterval !== undefined       && { syncInterval:           parseInt(String(body.syncInterval)) || 15 }),
+    ...(body.calendarStartHour !== undefined  && { calendarStartHour:      parseInt(String(body.calendarStartHour)) || 0 }),
+    ...(body.calendarEndHour !== undefined    && { calendarEndHour:        parseInt(String(body.calendarEndHour)) || 24 }),
+  };
 
-  const settings = await prisma.userSettings.upsert({
-    where: { userId: session.userId },
-    update: data,
-    create: { userId: session.userId, ...data },
-  });
-  return NextResponse.json(settings);
+  try {
+    const settings = await prisma.userSettings.upsert({
+      where: { userId: session.userId },
+      update,
+      create: { userId: session.userId, ...update },
+    });
+    return NextResponse.json(settings);
+  } catch (e) {
+    console.error("Settings save error:", e);
+    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+  }
 }

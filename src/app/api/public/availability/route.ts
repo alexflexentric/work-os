@@ -1,13 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { guardPublicApi, corsHeaders } from "@/lib/public-api-guard";
 import {
-  getSingleUserId,
   getBusyIntervals,
   getLocalHourDecimal,
   getLocalDayOfWeek,
   toLocalIso,
   thisDayAtTime,
   nextDayAtTime,
+  mergeBusyIntervals,
+  type BusyInterval,
 } from "@/lib/freebusy";
 import { prisma } from "@/lib/db";
 import { DEFAULT_SCHEDULE, parseHHMM, type WeeklySchedule } from "@/lib/availability-schedule";
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   if (guard) return guard;
 
   const { searchParams } = new URL(req.url);
+  const slug = searchParams.get("slug");
   const days = Math.min(Math.max(parseInt(searchParams.get("days") ?? "14", 10), 1), 60);
   const duration = parseInt(searchParams.get("duration") ?? "30", 10);
 
@@ -34,37 +36,80 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const timezone = process.env.USER_TIMEZONE ?? "UTC";
+  if (!slug) {
+    return NextResponse.json(
+      { error: "slug is required" },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
 
   try {
-    const userId = await getSingleUserId();
+    const bookingPage = await prisma.bookingPage.findUnique({
+      where: { slug },
+      select: { id: true, userId: true, schedule: true, timezone: true, calendarSources: true },
+    });
+
+    if (!bookingPage) {
+      return NextResponse.json({ error: "Booking page not found" }, { status: 404, headers: corsHeaders() });
+    }
+
+    const { userId, timezone, calendarSources } = bookingPage;
+    const schedule = (bookingPage.schedule as WeeklySchedule | null) ?? DEFAULT_SCHEDULE;
 
     const now = new Date();
     const windowEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const timeMin = now.toISOString();
+    const timeMax = windowEnd.toISOString();
 
-    const [busy, settings] = await Promise.all([
-      getBusyIntervals(userId, now.toISOString(), windowEnd.toISOString()),
-      prisma.userSettings.findUnique({
-        where: { userId },
-        select: { availabilitySchedule: true },
-      }),
-    ]);
+    // Busy from master calendar (MS Graph or Google)
+    const masterBusy = calendarSources.includes("master")
+      ? await getBusyIntervals(userId, timeMin, timeMax).catch(() => [] as BusyInterval[])
+      : [];
 
-    const schedule =
-      (settings?.availabilitySchedule as WeeklySchedule | null) ?? DEFAULT_SCHEDULE;
+    // Busy from iCal connections (from CalendarEvent cache)
+    const icalSourceIds = calendarSources.filter((s) => s !== "master");
+    const icalBusy: BusyInterval[] =
+      icalSourceIds.length > 0
+        ? (
+            await prisma.calendarEvent.findMany({
+              where: {
+                userId,
+                source: { in: icalSourceIds },
+                startAt: { lt: windowEnd },
+                endAt: { gt: now },
+              },
+              select: { startAt: true, endAt: true },
+            })
+          ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
+        : [];
+
+    // Busy from existing bookings for this booking page
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        bookingPageId: bookingPage.id,
+        status: { not: "declined" },
+        startAt: { lt: windowEnd },
+        endAt: { gt: now },
+      },
+      select: { startAt: true, endAt: true },
+    });
+    const bookingBusy: BusyInterval[] = existingBookings.map((b) => ({
+      start: b.startAt.getTime(),
+      end: b.endAt.getTime(),
+    }));
+
+    const busy = mergeBusyIntervals([...masterBusy, ...icalBusy, ...bookingBusy]);
 
     const durationMs = duration * 60 * 1000;
     const slots: Array<{ start: string; end: string }> = [];
 
-    // Start at next 30-min boundary from now
     let cursor = Math.ceil(now.getTime() / SLOT_BOUNDARY_MS) * SLOT_BOUNDARY_MS;
 
     while (cursor < windowEnd.getTime()) {
       const startDate = new Date(cursor);
-      const dow = getLocalDayOfWeek(startDate, timezone); // 0=Sun..6=Sat
+      const dow = getLocalDayOfWeek(startDate, timezone);
       const daySchedule = schedule[dow];
 
-      // Unavailable day — jump to midnight of next day, loop re-evaluates that day
       if (daySchedule.unavailable) {
         cursor = nextDayAtTime(cursor, timezone, "00:00");
         continue;
@@ -74,14 +119,12 @@ export async function GET(req: NextRequest) {
       const endDecimal = parseHHMM(daySchedule.end);
       const hourDecimal = getLocalHourDecimal(startDate, timezone);
 
-      // Before working hours — jump to day's start time
       if (hourDecimal < startDecimal) {
         const dayStart = thisDayAtTime(cursor, timezone, daySchedule.start);
         cursor = dayStart > cursor ? dayStart : cursor + SLOT_BOUNDARY_MS;
         continue;
       }
 
-      // At or past end of working hours — jump to midnight of next day
       if (hourDecimal >= endDecimal) {
         cursor = nextDayAtTime(cursor, timezone, "00:00");
         continue;
@@ -90,13 +133,11 @@ export async function GET(req: NextRequest) {
       const slotEnd = cursor + durationMs;
       const slotEndDecimal = getLocalHourDecimal(new Date(slotEnd), timezone);
 
-      // Slot would run past end of working hours — skip to next day
       if (slotEndDecimal > endDecimal) {
         cursor = nextDayAtTime(cursor, timezone, "00:00");
         continue;
       }
 
-      // Check against busy intervals
       const blocking = busy.find((b) => cursor < b.end && slotEnd > b.start);
       if (!blocking) {
         slots.push({
@@ -105,7 +146,6 @@ export async function GET(req: NextRequest) {
         });
         cursor = slotEnd;
       } else {
-        // Round up past the busy interval to the next 30-min mark
         cursor = Math.ceil(blocking.end / SLOT_BOUNDARY_MS) * SLOT_BOUNDARY_MS;
       }
     }

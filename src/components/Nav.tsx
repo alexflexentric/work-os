@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Languages, Settings, LogOut, CalendarDays, Home } from "lucide-react";
+import { Languages, Settings, LogOut, CalendarDays, Home, BookOpen } from "lucide-react";
 
 const links = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/translation", label: "Translation", icon: Languages },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/booking", label: "Booking", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

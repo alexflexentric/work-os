@@ -61,6 +61,8 @@ Key models:
 
 | Model | Purpose |
 |-------|---------|
+| `BookingPage` | Per-user booking page config: slug, name, durations, schedule (WeeklySchedule JSON), calendarSources, timezone |
+| `Booking` | Individual booking record: guest details, startAt/endAt, teamsLink, outlookEventId, status |
 | `AppConfig` | Singleton row. App-level OAuth credentials (Google, Microsoft). Read by NextAuth at runtime. |
 | `User` | NextAuth user + `isApproved` flag |
 | `Account` / `Session` / `VerificationToken` | NextAuth standard models. Provider `'google'` or `'microsoft-entra-id'` determines master calendar. |
@@ -155,6 +157,38 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 - **Calendar view hours**: start/end hour inputs (`calendarStartHour`, `calendarEndHour`) — controls which hours the week grid renders; defaults 0–24
 - `POST /api/settings` builds a typed Prisma update and coerces all `Int` fields via `parseInt`; returns the saved record so the UI always reflects actual DB values
 
+### Booking (`/booking` + `/settings → Booking`)
+
+A Calendly-style booking system. External users book meetings via a Lovable-built frontend at `flexentric.com/booking/[slug]`; Work OS serves as the backend.
+
+**Public API** (CORS: `flexentric.com`, no token required):
+- `GET /api/public/availability?slug=ap&duration=30&days=14` — returns available time slots based on the booking page's schedule and busy calendar intervals
+- `POST /api/public/bookings` — creates a booking: validates slot, creates Outlook event with Teams link, stores Booking record, sends Resend emails to guest and Alex
+
+**Authenticated API**:
+- `GET/POST /api/booking-pages` — list / create booking pages
+- `PATCH/DELETE /api/booking-pages/[id]` — update / delete
+- `GET /api/bookings` — list all bookings across the user's booking pages (ordered by startAt desc)
+
+**Booking flow** (fully auto-approved):
+1. Guest picks duration → date/time → fills in name, email, company, subject, notes, location
+2. Work OS re-validates the slot is free, creates an Outlook calendar event with Teams join URL
+3. Outlook auto-sends calendar invite to guest; Resend sends confirmation email (with Teams link) to guest and notification email to Alex
+
+**Lovable → Work OS migration** (minimal changes):
+- Change base URL to `work-os.flexentric.com`
+- Add `?slug=ap` to availability GET call
+- Add `slug: "ap"` field to bookings POST body
+
+**Settings (Booking pages)**:
+Each booking page has: name, slug (URL), allowed durations (15/30/60/90/120 min), per-day schedule (unavailable toggle + start/end hours), calendar sources (master and/or iCal connections), timezone.
+
+**`/booking` nav page**: Lists incoming bookings (upcoming + past), shows guest details, Teams link.
+
+**Emails**:
+- `BookingConfirmation.tsx` — sent to guest with meeting details and Teams join button
+- `BookingNotification.tsx` — sent to Alex with full guest and meeting details
+
 ### Legacy Calendar Sync (iCal → Google/Microsoft)
 - `lib/sync-engine.ts` syncs iCal feeds into the master calendar via Google Calendar API or MS Graph
 - Only supports Google as target; Microsoft-master users' iCal feeds do not sync
@@ -199,7 +233,12 @@ Sidebar navigation with three groups:
 | `/api/calendar/connections/[id]` | PATCH / DELETE | Update color or toggle active / delete |
 | `/api/calendar/sync` | POST | Sync master calendar + iCal feeds into `CalendarEvent` table |
 | `/api/calendar/events` | GET `?start&end` | Read `CalendarEvent` rows for date range |
-| `/api/public/availability` | GET | Public free/busy (reads master calendar) |
+| `/api/public/availability` | GET `?slug&duration&days` | Available slots for a booking page (checks master + iCal + existing bookings) |
+| `/api/public/bookings` | POST | Create a booking (auto-approved, creates Outlook event + Teams link, sends emails) |
+| `/api/booking-pages` | GET / POST | List / create booking pages |
+| `/api/booking-pages/[id]` | PATCH / DELETE | Update / delete booking page |
+| `/api/bookings` | GET | List all bookings across the user's booking pages |
+| `/api/public/availability` (legacy) | GET | Public free/busy (reads master calendar) |
 
 ---
 

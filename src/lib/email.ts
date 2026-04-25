@@ -2,6 +2,8 @@ import { Resend } from "resend";
 import ApprovalPendingEmail from "@/emails/ApprovalPending";
 import WelcomeEmail from "@/emails/Welcome";
 import AdminApprovalNotificationEmail from "@/emails/AdminApprovalNotification";
+import BookingConfirmationEmail from "@/emails/BookingConfirmation";
+import BookingNotificationEmail from "@/emails/BookingNotification";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const FROM = "Work OS <work-os@flexentric.com>";
@@ -32,5 +34,46 @@ export async function sendWelcomeEmail(email: string, name?: string) {
     to: [email],
     subject: "Welcome to Work OS",
     react: WelcomeEmail({ name }),
+  });
+}
+
+export async function sendBookingConfirmationEmail(
+  guestEmail: string,
+  opts: {
+    guestName: string;
+    subject: string;
+    dateLabel: string;
+    durationMinutes: number;
+    location: string;
+    teamsLink?: string | null;
+    address?: string | null;
+    hostName: string;
+  }
+) {
+  await resend.emails.send({
+    from: FROM,
+    to: [guestEmail],
+    subject: `Meeting confirmed: ${opts.subject}`,
+    react: BookingConfirmationEmail({ ...opts, guestName: opts.guestName }),
+  });
+}
+
+export async function sendBookingNotificationEmail(opts: {
+  guestName: string;
+  guestEmail: string;
+  guestCompany: string;
+  subject: string;
+  dateLabel: string;
+  durationMinutes: number;
+  location: string;
+  address?: string | null;
+  note?: string | null;
+  bookingPageName: string;
+}) {
+  await resend.emails.send({
+    from: FROM,
+    to: [ADMIN_EMAIL],
+    subject: `New booking: ${opts.subject} — ${opts.guestName}`,
+    react: BookingNotificationEmail(opts),
   });
 }

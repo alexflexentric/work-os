@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 
-type Section = "api-keys" | "tones" | "formats" | "calendar" | "import-export";
+type Section = "api-keys" | "tones" | "formats" | "calendar" | "import-export" | "booking";
 type Item = { id: string; name: string; instructions: string };
 type CalendarOption = { id: string; name: string; primary: boolean };
 type Connection = {
@@ -37,6 +37,7 @@ const NAV: { group: string; items: { id: Section; label: string }[] }[] = [
     ],
   },
   { group: "Calendar", items: [{ id: "calendar", label: "Calendar" }] },
+  { group: "Booking", items: [{ id: "booking", label: "Booking pages" }] },
 ];
 
 const CHEVRON_STYLE = {
@@ -174,6 +175,13 @@ export default function SettingsPage() {
               settings={settings}
               setSettings={setSettings}
               userEmail={session?.user?.email ?? ""}
+              inputCls={inputCls}
+            />
+          )}
+
+          {section === "booking" && (
+            <BookingPanel
+              masterProvider={settings.masterCalendarProvider ?? "microsoft"}
               inputCls={inputCls}
             />
           )}
@@ -605,6 +613,354 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+type BookingPageData = {
+  id: string;
+  name: string;
+  slug: string;
+  durations: number[];
+  schedule: { unavailable: boolean; start: string; end: string }[];
+  calendarSources: string[];
+  timezone: string;
+  _count?: { bookings: number };
+};
+
+const DURATION_OPTIONS = [15, 30, 60, 90, 120];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const COMMON_TIMEZONES = [
+  "UTC", "Europe/London", "Europe/Paris", "Europe/Brussels", "Europe/Warsaw",
+  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney",
+];
+
+const DEFAULT_BOOKING_SCHEDULE = [
+  { unavailable: true,  start: "09:00", end: "17:00" },
+  { unavailable: false, start: "09:00", end: "17:00" },
+  { unavailable: false, start: "09:00", end: "17:00" },
+  { unavailable: false, start: "09:00", end: "17:00" },
+  { unavailable: false, start: "09:00", end: "17:00" },
+  { unavailable: false, start: "09:00", end: "17:00" },
+  { unavailable: true,  start: "09:00", end: "17:00" },
+];
+
+function BookingPanel({
+  masterProvider,
+  inputCls,
+}: {
+  masterProvider: string;
+  inputCls: string;
+}) {
+  const [pages, setPages] = useState<BookingPageData[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Partial<BookingPageData>>({});
+  const [saving, setSaving] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newPage, setNewPage] = useState<Partial<BookingPageData>>({
+    name: "", slug: "", durations: [30, 60],
+    schedule: DEFAULT_BOOKING_SCHEDULE,
+    calendarSources: ["master"], timezone: "UTC",
+  });
+
+  useEffect(() => {
+    fetch("/api/booking-pages").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setPages(d); }).catch(() => {});
+    fetch("/api/calendar/connections").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setConnections(d); }).catch(() => {});
+  }, []);
+
+  function toggleDuration(dur: number, current: number[], setter: (v: number[]) => void) {
+    setter(current.includes(dur) ? current.filter((d) => d !== dur) : [...current, dur].sort((a, b) => a - b));
+  }
+
+  function toggleSource(src: string, current: string[], setter: (v: string[]) => void) {
+    setter(current.includes(src) ? current.filter((s) => s !== src) : [...current, src]);
+  }
+
+  function updateScheduleDay(
+    schedule: { unavailable: boolean; start: string; end: string }[],
+    idx: number,
+    patch: Partial<{ unavailable: boolean; start: string; end: string }>,
+    setter: (s: { unavailable: boolean; start: string; end: string }[]) => void
+  ) {
+    const next = schedule.map((d, i) => (i === idx ? { ...d, ...patch } : d));
+    setter(next);
+  }
+
+  async function createPage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPage.name || !newPage.slug) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/booking-pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPage),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setPages((prev) => [...prev, created]);
+        setShowAdd(false);
+        setNewPage({ name: "", slug: "", durations: [30, 60], schedule: DEFAULT_BOOKING_SCHEDULE, calendarSources: ["master"], timezone: "UTC" });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function savePage(id: string) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/booking-pages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setPages((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+        setEditingId(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePage(id: string) {
+    await fetch(`/api/booking-pages/${id}`, { method: "DELETE" });
+    setPages((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function ScheduleGrid({
+    schedule,
+    setSchedule,
+  }: {
+    schedule: { unavailable: boolean; start: string; end: string }[];
+    setSchedule: (s: { unavailable: boolean; start: string; end: string }[]) => void;
+  }) {
+    return (
+      <div className="space-y-1.5">
+        {schedule.map((day, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <span className="text-xs text-[--muted-foreground] w-7 shrink-0">{DAY_LABELS[idx]}</span>
+            <button
+              type="button"
+              onClick={() => updateScheduleDay(schedule, idx, { unavailable: !day.unavailable }, setSchedule)}
+              className={`w-8 h-4 rounded-full transition-colors shrink-0 ${day.unavailable ? "bg-[--muted]" : "bg-accent"}`}
+            >
+              <span className={`block w-3 h-3 rounded-full bg-white mx-auto transition-transform ${day.unavailable ? "" : "translate-x-1.5"}`} />
+            </button>
+            {!day.unavailable && (
+              <>
+                <input
+                  type="time"
+                  value={day.start}
+                  onChange={(e) => updateScheduleDay(schedule, idx, { start: e.target.value }, setSchedule)}
+                  className="border border-[--border] rounded px-2 py-0.5 text-xs bg-[--card] text-[--foreground] w-24"
+                />
+                <span className="text-xs text-[--muted-foreground]">–</span>
+                <input
+                  type="time"
+                  value={day.end}
+                  onChange={(e) => updateScheduleDay(schedule, idx, { end: e.target.value }, setSchedule)}
+                  className="border border-[--border] rounded px-2 py-0.5 text-xs bg-[--card] text-[--foreground] w-24"
+                />
+              </>
+            )}
+            {day.unavailable && (
+              <span className="text-xs text-[--muted-foreground]">Unavailable</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function PageForm({
+    data,
+    setData,
+    onSubmit,
+    submitLabel,
+    onCancel,
+  }: {
+    data: Partial<BookingPageData>;
+    setData: (d: Partial<BookingPageData>) => void;
+    onSubmit: (e: React.FormEvent) => void;
+    submitLabel: string;
+    onCancel: () => void;
+  }) {
+    const schedule = (data.schedule as { unavailable: boolean; start: string; end: string }[]) ?? DEFAULT_BOOKING_SCHEDULE;
+    return (
+      <form onSubmit={onSubmit} className="space-y-4 border border-[--border] rounded-lg p-4">
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1">Name</label>
+          <input value={data.name ?? ""} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g. Quick call" className={inputCls} required />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1">URL slug</label>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-[--muted-foreground]">flexentric.com/booking/</span>
+            <input
+              value={data.slug ?? ""}
+              onChange={(e) => setData({ ...data, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+              placeholder="ap"
+              className={inputCls + " flex-1"}
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">Allowed durations</label>
+          <div className="flex gap-2 flex-wrap">
+            {DURATION_OPTIONS.map((d) => {
+              const active = (data.durations ?? []).includes(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => toggleDuration(d, data.durations ?? [], (v) => setData({ ...data, durations: v }))}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${active ? "bg-[--foreground] text-[--background] border-[--foreground]" : "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"}`}
+                >
+                  {d} min
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">Calendars to check</label>
+          <div className="space-y-1.5">
+            {[
+              { id: "master", label: `Master (${masterProvider === "microsoft" ? "Microsoft" : "Google"})` },
+              ...connections.filter((c) => c.isActive).map((c) => ({ id: c.id, label: c.sourceCalendarName })),
+            ].map(({ id, label }) => {
+              const checked = (data.calendarSources ?? []).includes(id);
+              return (
+                <label key={id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleSource(id, data.calendarSources ?? [], (v) => setData({ ...data, calendarSources: v }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-[--foreground]">{label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">Schedule</label>
+          <ScheduleGrid
+            schedule={schedule}
+            setSchedule={(s) => setData({ ...data, schedule: s })}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[--muted-foreground] mb-1">Timezone</label>
+          <select
+            value={data.timezone ?? "UTC"}
+            onChange={(e) => setData({ ...data, timezone: e.target.value })}
+            className={inputCls + " appearance-none"}
+          >
+            {COMMON_TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40 transition-opacity"
+          >
+            {saving ? "Saving…" : submitLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 rounded-lg text-sm border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {pages.length === 0 && !showAdd && (
+        <p className="text-xs text-[--muted-foreground]">No booking pages yet.</p>
+      )}
+
+      {pages.length > 0 && (
+        <ul className="space-y-px border border-[--border] rounded-lg overflow-hidden">
+          {pages.map((page) => (
+            <li key={page.id} className="bg-[--card] border-b border-[--border] last:border-0 px-4 py-3">
+              {editingId === page.id ? (
+                <PageForm
+                  data={draft}
+                  setData={setDraft}
+                  onSubmit={(e) => { e.preventDefault(); savePage(page.id); }}
+                  submitLabel="Save changes"
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[--foreground]">{page.name}</p>
+                    <p className="text-xs text-[--muted-foreground] mt-0.5">
+                      flexentric.com/booking/{page.slug}
+                    </p>
+                    <p className="text-xs text-[--muted-foreground]">
+                      {page.durations.join(", ")} min · {page._count?.bookings ?? 0} booking(s)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => { setEditingId(page.id); setDraft({ ...page }); }}
+                      className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deletePage(page.id)}
+                      className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--destructive] transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showAdd ? (
+        <PageForm
+          data={newPage}
+          setData={(d) => setNewPage(d)}
+          onSubmit={createPage}
+          submitLabel="Create"
+          onCancel={() => setShowAdd(false)}
+        />
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 transition-opacity"
+        >
+          Add booking page
+        </button>
+      )}
     </div>
   );
 }

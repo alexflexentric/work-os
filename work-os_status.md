@@ -6,6 +6,30 @@
 
 ## Just Completed
 
+**Booking system** (2026-04-25)
+
+- New `BookingPage` and `Booking` Prisma models; migration at `20260425300000_add_booking_pages`
+- `BookingPage` — per-user, stores slug (unique), name, allowed durations (Int[]), schedule (WeeklySchedule JSON), calendarSources (String[]), timezone
+- `Booking` — linked to BookingPage; stores guest details, startAt/endAt, teamsLink, outlookEventId, status (auto-approved)
+- `public-api-guard.ts` — dropped `x-booking-token` requirement; CORS-only (flexentric.com)
+- `GET /api/public/availability?slug=ap&duration=30&days=14` — rewrote to look up booking page by slug, use its per-page schedule + calendarSources; also checks existing Booking records for conflicts; iCal sources read from CalendarEvent cache; master calendar calls MS Graph
+- `POST /api/public/bookings` — new route: validate fields → check slot free → create Outlook event with Teams link via `createBookingCalendarEvent` → store Booking → send Resend emails (non-blocking)
+- `GET/POST /api/booking-pages`, `PATCH/DELETE /api/booking-pages/[id]` — authenticated CRUD
+- `GET /api/bookings` — list all bookings across user's booking pages
+- `BookingConfirmation.tsx` + `BookingNotification.tsx` email templates; `sendBookingConfirmationEmail` / `sendBookingNotificationEmail` in email.ts
+- "Booking" group added to Settings sidebar → BookingPanel component: list + create/edit form with name, slug, duration checkboxes, 7-day schedule grid, calendar source checkboxes, timezone selector
+- "Booking" nav item added to Nav.tsx (BookOpen icon)
+- `/booking` page: lists all bookings split into Upcoming / Past with guest details and Teams link
+
+**Lovable migration** (minimal changes needed):
+1. Change base URL to `work-os.flexentric.com`
+2. Add `?slug=ap` to availability GET
+3. Add `slug: "ap"` to bookings POST body
+
+---
+
+
+
 **iCal recurring event expansion + DST fix** (2026-04-25)
 
 - `lib/ical.ts` — rewrote to expand `RRULE` into individual instances within the sync window instead of storing only the master (first) occurrence
@@ -88,14 +112,17 @@ All core features live at `work-os.flexentric.com`.
 - **iCal → master calendar sync (legacy)** — `sync-engine.ts` only supports Google as sync target; Microsoft-master users' iCal feeds aren't written to their MS calendar. The new `CalendarEvent` table shows them correctly in the UI regardless.
 - ~~**Admin email mismatch**~~ — fixed, admin gate now checks `alex@flexentric.com`
 - **PWA icons** — `public/icon-192.png` and `public/icon-512.png` not yet added.
+- **Booking: Lovable migration** — update Lovable frontend to point to work-os.flexentric.com and add `slug` param to API calls (see status above).
 
 ---
 
 ## Next Steps (in priority order)
 
-1. **Railway Cron for calendar sync** — add a Cron service calling `POST https://work-os.flexentric.com/api/calendar/sync` every 15 min
-2. **iCal → Microsoft Calendar sync** — update `sync-engine.ts` to support Microsoft as sync target (requires `targetMicrosoftCalendarId` field + MS Graph event CRUD in sync loop)
-3. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png`
+1. **Migrate Lovable frontend** — change base URL to work-os.flexentric.com, add `?slug=ap` to availability call, add `slug: "ap"` to bookings POST body
+2. **Create booking page in Settings** — add the "ap" booking page via Settings → Booking pages; set schedule, durations, timezone
+3. **Railway Cron for calendar sync** — add a Cron service calling `POST https://work-os.flexentric.com/api/calendar/sync` every 15 min
+4. **iCal → Microsoft Calendar sync** — update `sync-engine.ts` to support Microsoft as sync target
+5. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png`
 
 ---
 

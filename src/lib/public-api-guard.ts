@@ -7,18 +7,13 @@ export function corsHeaders(): Record<string, string> {
   };
 }
 
-// Returns a 403 Response if the request fails auth checks, null if it passes.
+// Returns a 403 Response if the origin check fails, null if it passes.
+// x-booking-token is accepted but not required (Lovable sends it, we ignore it).
 export function guardPublicApi(request: Request): Response | null {
-  const token = request.headers.get("x-booking-token");
-  if (!token || token !== process.env.BOOKING_PAGE_SECRET) {
-    return new Response("Forbidden", { status: 403, headers: corsHeaders() });
-  }
-
   const origin = request.headers.get("origin");
   const allowed = process.env.BOOKING_PAGE_URL ?? "https://flexentric.com";
   if (origin && origin !== allowed) {
     return new Response("Forbidden", { status: 403, headers: corsHeaders() });
   }
-
   return null;
 }

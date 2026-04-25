@@ -34,6 +34,7 @@ model User {
   settings            UserSettings?
   tones               Tone[]
   formats             Format[]
+  bookingPages        BookingPage[]
 }
 
 model UserSettings {
@@ -178,20 +179,39 @@ model CalendarEvent {
   @@index([userId, startAt])
 }
 
-model PendingBooking {
+model BookingPage {
   id              String    @id @default(cuid())
+  userId          String
+  name            String
+  slug            String    @unique
+  durations       Int[]
+  schedule        Json
+  calendarSources String[]
+  timezone        String    @default("UTC")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+}
+
+model Booking {
+  id              String      @id @default(cuid())
+  bookingPageId   String
   guestName       String
   guestEmail      String
   guestCompany    String
   subject         String
   note            String?
-  location        String    @default("online")
+  location        String      @default("online")
   address         String?
-  proposedStart   DateTime
-  proposedEnd     DateTime
+  startAt         DateTime
+  endAt           DateTime
   durationMinutes Int
-  status          String    @default("pending")
+  status          String      @default("approved")
   teamsLink       String?
-  createdAt       DateTime  @default(now())
-  resolvedAt      DateTime?
+  outlookEventId  String?
+  createdAt       DateTime    @default(now())
+
+  bookingPage BookingPage @relation(fields: [bookingPageId], references: [id], onDelete: Cascade)
 }

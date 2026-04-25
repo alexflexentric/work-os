@@ -183,7 +183,7 @@ A Calendly-style booking system. External users book meetings via a Lovable-buil
 **Settings (Booking pages)**:
 Each booking page has: name, slug (URL), allowed durations (15/30/60/90/120 min), per-day schedule (unavailable toggle + start/end hours), calendar sources (master and/or iCal connections), timezone.
 
-**`/booking` nav page**: Lists incoming bookings (upcoming + past), shows guest details, Teams link.
+**`/booking` nav page**: Multi-step booking flow (Duration → Date & Time → Details → Confirmation) plus a Bookings tab listing upcoming/past bookings with Teams links. Schedule grid in Settings shows Mon → Sun. Time slots display in the booking page timezone using wall-clock extraction from the ISO string (no UTC conversion) to avoid offset shift.
 
 **Emails**:
 - `BookingConfirmation.tsx` — sent to guest with meeting details and Teams join button

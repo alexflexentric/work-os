@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { sendWelcomeEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 
+export const dynamic = "force-dynamic";
+
 const ADMIN_EMAIL = "alex@fafo-studio.com";
 
 export default async function AdminPage() {

@@ -11,8 +11,7 @@ export async function GET() {
     prisma.account.findFirst({ where: { userId: session.userId }, select: { provider: true } }),
   ]);
 
-  const detectedProvider = account?.provider === "microsoft-entra-id" ? "microsoft" : "google";
-  const masterCalendarProvider = settings?.masterCalendarProvider ?? detectedProvider;
+  const masterCalendarProvider = account?.provider === "microsoft-entra-id" ? "microsoft" : "google";
 
   return NextResponse.json({ ...(settings ?? {}), masterCalendarProvider });
 }

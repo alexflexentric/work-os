@@ -1,6 +1,6 @@
 # Work OS - Documentation
 
-**Version**: 1.2 (2026-04-24)
+**Version**: 1.3 (2026-04-25)
 **Deployment**: https://work-os.fafo-studio.com (Railway)
 **Stack**: Next.js 16 App Router, TypeScript 5, Tailwind CSS v4, Prisma 7 + Postgres, NextAuth v5 beta, Anthropic SDK, OpenAI Whisper, Resend, Google Calendar / MS Graph
 
@@ -150,10 +150,10 @@ Sidebar navigation with three groups:
 - Tones: user-defined tones (create / edit / reorder)
 
 **Calendar**
-- Master account info (read-only: provider + email)
-- Primary calendar selector (dropdown from master account)
-- Sync interval
-- iCal connections (name + URL — create / delete / toggle active)
+- Master account info (read-only: provider + email from session)
+- Primary calendar: `<select>` populated from `GET /api/calendar/calendars`; auto-selects primary; falls back to text input if API unavailable
+- Sync interval (minutes)
+- iCal connections: list with Active/Paused toggle and Delete; Add iCal feed form (name + URL)
 
 ---
 

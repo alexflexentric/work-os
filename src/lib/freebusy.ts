@@ -19,6 +19,17 @@ export async function getBusyIntervals(
   timeMin: string,
   timeMax: string
 ): Promise<BusyInterval[]> {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { masterCalendarProvider: true },
+  });
+
+  if (settings?.masterCalendarProvider === "microsoft") {
+    const msBusy = await getMicrosoftBusyIntervals(userId, timeMin, timeMax).catch(() => []);
+    return mergeBusyIntervals(msBusy);
+  }
+
+  // Google master (default)
   const connections = await prisma.calendarConnection.findMany({
     where: { userId, isActive: true },
     select: { targetGoogleCalendarId: true },
@@ -32,16 +43,13 @@ export async function getBusyIntervals(
   ];
 
   const cal = await getCalendarClient(userId);
-  const [freebusyRes, msBusy] = await Promise.all([
-    cal.freebusy.query({
-      requestBody: {
-        timeMin,
-        timeMax,
-        items: calendarIds.map((id) => ({ id })),
-      },
-    }),
-    getMicrosoftBusyIntervals(userId, timeMin, timeMax).catch(() => []),
-  ]);
+  const freebusyRes = await cal.freebusy.query({
+    requestBody: {
+      timeMin,
+      timeMax,
+      items: calendarIds.map((id) => ({ id })),
+    },
+  });
 
   const busyRaw: BusyInterval[] = [];
   for (const calData of Object.values(freebusyRes.data.calendars ?? {})) {
@@ -55,7 +63,7 @@ export async function getBusyIntervals(
     }
   }
 
-  return mergeBusyIntervals([...busyRaw, ...msBusy]);
+  return mergeBusyIntervals(busyRaw);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

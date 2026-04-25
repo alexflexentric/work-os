@@ -18,10 +18,11 @@ const COLOR_HEX: Record<string, string> = {
   "11": "#616161",
 };
 
-function createOAuth2Client() {
+async function createOAuth2Client() {
+  const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
   return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID!,
-    process.env.GOOGLE_CLIENT_SECRET!,
+    config?.googleClientId ?? process.env.GOOGLE_CLIENT_ID!,
+    config?.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET!,
     process.env.GOOGLE_REDIRECT_URI
   );
 }
@@ -35,7 +36,7 @@ async function getAuthenticatedClient(userId: string) {
     throw new Error("No Google account connected for user");
   }
 
-  const oauth2Client = createOAuth2Client();
+  const oauth2Client = await createOAuth2Client();
   oauth2Client.setCredentials({
     access_token: account.access_token,
     refresh_token: account.refresh_token ?? undefined,

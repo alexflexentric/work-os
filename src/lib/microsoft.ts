@@ -1,8 +1,20 @@
 import { prisma } from "@/lib/db";
 
-const MS_TOKEN_URL =
-  "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 const MS_GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+
+async function getMsTokenUrl(): Promise<string> {
+  const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
+  const tenant = config?.microsoftTenantId ?? "common";
+  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`;
+}
+
+async function getMsClientCredentials(): Promise<{ clientId: string; clientSecret: string }> {
+  const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
+  return {
+    clientId: config?.microsoftClientId ?? process.env.MICROSOFT_CLIENT_ID ?? "",
+    clientSecret: config?.microsoftClientSecret ?? process.env.MICROSOFT_CLIENT_SECRET ?? "",
+  };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,13 +59,18 @@ export interface BookingEventResult {
 async function refreshToken(account: MsAccount): Promise<string> {
   if (!account.refresh_token) throw new Error("No MS refresh token available");
 
-  const res = await fetch(MS_TOKEN_URL, {
+  const [tokenUrl, { clientId, clientSecret }] = await Promise.all([
+    getMsTokenUrl(),
+    getMsClientCredentials(),
+  ]);
+
+  const res = await fetch(tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      client_id: process.env.MICROSOFT_CLIENT_ID!,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: account.refresh_token,
       scope: "offline_access Calendars.ReadWrite User.Read",
     }),

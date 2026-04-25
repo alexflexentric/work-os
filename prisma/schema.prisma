@@ -44,7 +44,6 @@ model UserSettings {
   calendarId              String?
   syncInterval            Int      @default(15)
   availabilitySchedule    Json?
-  calendarId              String?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 

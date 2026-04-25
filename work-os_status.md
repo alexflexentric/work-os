@@ -1,56 +1,46 @@
 # Work OS - Status
 
-**Last updated**: 2026-04-24
+**Last updated**: 2026-04-25
 
 ---
 
 ## Just Completed
 
-- Settings page refactored: segmented tab control (API Keys / Tones). Formats temporarily removed.
-- Translation page: static format pills (temporary), clear (X) button added to text area
-- Translate API: hardcoded format instructions (temporary)
-- **Fix**: Removed `prisma migrate deploy` from build script — was failing at build time
-- MD files updated to reflect new architecture (setup wizard, AppConfig, dual provider)
+**Stage 6** — Settings Calendar panel upgrade (2026-04-25)
+
+- `CalendarPanel` rewritten as a stateful component with its own hooks
+- **Primary calendar**: `calendarId` text input replaced with a `<select>` populated from `GET /api/calendar/calendars`; auto-selects the primary calendar if `calendarId` is not yet set in settings
+- Falls back gracefully to a text input if the calendars API call fails or returns empty
+- **iCal connections**: full list (name, URL, last-synced, error message) with Active/Paused toggle and Delete buttons; Add iCal feed form (name + URL)
+- All wired to `GET/POST /api/calendar/connections` and `PATCH/DELETE /api/calendar/connections/[id]`
 
 ---
 
-## In Progress
+## Current State — All core features complete
 
-Large feature branch — **setup wizard + dual OAuth + settings restructure + calendar**
+The translation + settings + calendar API are fully wired end-to-end. The app is deployable.
 
-### Stage 1 — AppConfig schema + setup wizard (next)
-- [ ] Prisma migration: add `AppConfig` model (singleton, Google + Microsoft credentials)
-- [ ] Prisma migration: add `masterCalendarProvider String @default("google")` to `UserSettings`; remove `microsoftClientId/Secret/TenantId` from `UserSettings`
-- [ ] `/setup` page — multi-step wizard with in-UI OAuth app instructions:
-  - Step 1: Google (client ID + secret, instructions + redirect URIs shown)
-  - Step 2: Microsoft (client ID + secret + tenant ID, instructions + redirect URIs shown)
-  - At least one required; each step skippable
-  - Step 3: Done → redirect to sign-in
-- [ ] `GET/POST /api/setup` route — unauthenticated GET to check if setup is complete; POST saves to `AppConfig` (admin only once set up)
-- [ ] Middleware update: if `AppConfig` empty → redirect all routes to `/setup`
+### What works
+- `/setup` wizard — Google/Microsoft OAuth credential onboarding
+- Sign-in — Google and/or Microsoft (whichever is configured in AppConfig)
+- Admin approval gate — `alex@fafo-studio.com` approves users
+- Translation — text + voice (Whisper) → Claude, with DB-driven formats and tones
+- Settings — API Keys, Formats (CRUD + reorder), Tones (CRUD + reorder), Calendar (primary calendar select, sync interval, iCal connections CRUD)
+- Calendar API — list calendars, manage iCal connections, public availability endpoint
+- Sync worker — iCal → Google Calendar sync (cron, per-user)
 
-### Stage 2 — Dynamic NextAuth providers
-- [ ] Refactor `src/auth.ts` to read provider credentials from `AppConfig` at request time
-- [ ] Support Google, Microsoft, or both based on what is configured
-- [ ] Ensure Microsoft scopes include `Calendars.ReadWrite` and `offline_access`
-- [ ] Ensure approval gate applies to Microsoft sign-ups
+### Known limitations / open tasks
+- **iCal → Microsoft Calendar sync**: sync engine only supports Google as target; Microsoft-master users' iCal feeds won't sync yet
+- **PWA icons**: `public/icon-192.png` and `public/icon-512.png` not yet added
+- **`/api/auth/[...nextauth]/route.ts`**: pre-existing TS error (`Request` vs `NextRequest`) — does not affect runtime
 
-### Stage 3 — Settings page UI
-- [ ] Sidebar nav: General › API Keys, Translation › Formats + Tones, Calendar
-- [ ] Restore Formats panel (create / edit / reorder)
-- [ ] Calendar section: master account info, primary calendar selector, sync interval, iCal connections
+---
 
-### Stage 4 — Translation page + translate API
-- [ ] Format: static pills → dropdown (DB-driven, like Tone)
-- [ ] `/api/translate`: restore `formatId` DB lookup
+## Next Steps (in priority order)
 
-### Stage 5 — Calendar API routes + availability
-- [ ] `GET /api/calendar/calendars` — list calendars from master account (Google or Microsoft)
-- [ ] `GET/POST /api/calendar/connections` — list / create iCal connections
-- [ ] `DELETE/PATCH /api/calendar/connections/[id]` — delete / toggle active
-- [ ] `GET /api/public/availability` — route to Google or Microsoft based on `masterCalendarProvider`
-- [ ] Add `listMicrosoftCalendars(userId)` to `lib/microsoft.ts`
-- [ ] Update sync worker to sync iCal into master calendar
+1. **Deploy + smoke test** on Railway — run `prisma migrate deploy`, verify setup wizard, sign-in, translate, settings
+2. **iCal → Microsoft sync** — update `sync-engine.ts` and `CalendarConnection` model to support Microsoft as the sync target (requires `targetMicrosoftCalendarId` field + MS Graph event create/update/delete in sync loop)
+3. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png` to complete the manifest
 
 ---
 
@@ -64,7 +54,7 @@ Large feature branch — **setup wizard + dual OAuth + settings restructure + ca
 
 ## Required Environment Variables (Railway)
 
-Only infra-level — OAuth credentials moved to DB via `/setup`
+Only infra-level — OAuth credentials stored in DB via `/setup`
 
 | Variable | Notes |
 |----------|-------|
@@ -75,10 +65,3 @@ Only infra-level — OAuth credentials moved to DB via `/setup`
 | `SYNC_INTERVAL_MINUTES` | Optional, default 15 |
 | `USER_TIMEZONE` | Optional, default UTC |
 | `PUBLIC_API_SECRET` | Secret for `/api/public/*` endpoints |
-
----
-
-## Open Questions / Blockers
-
-- None currently — ready to start Stage 1
-- PWA icons still not added (`public/icon-192.png`, `public/icon-512.png`)

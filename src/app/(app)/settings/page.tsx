@@ -503,22 +503,20 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
       const newFormats = formats.filter((f) => !existingFormatNames.has(f.name.toLowerCase()));
       const newTones = tones.filter((t) => !existingToneNames.has(t.name.toLowerCase()));
 
-      await Promise.all([
-        ...newFormats.map((f) =>
-          fetch("/api/formats", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(f),
-          })
-        ),
-        ...newTones.map((t) =>
-          fetch("/api/tones", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(t),
-          })
-        ),
-      ]);
+      for (const f of newFormats) {
+        await fetch("/api/formats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(f),
+        });
+      }
+      for (const t of newTones) {
+        await fetch("/api/tones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t),
+        });
+      }
 
       const parts: string[] = [];
       if (Object.keys(apiKeys).length > 0) parts.push(`${Object.keys(apiKeys).length} API key(s)`);

@@ -123,6 +123,7 @@ export default function BookingPage() {
             )}
             {selectedPage && (
               <BookingFlow
+                key={selectedPage.id}
                 page={selectedPage}
                 defaultName={session?.user?.name ?? ""}
                 defaultEmail={session?.user?.email ?? ""}
@@ -170,16 +171,6 @@ function BookingFlow({
     location: "online",
     address: "",
   });
-
-  // Reset when page changes
-  useEffect(() => {
-    setStep("duration");
-    setSlots([]);
-    setSelectedDate(null);
-    setSelectedSlot(null);
-    setConfirmed(null);
-    setDuration(page.durations[0] ?? 30);
-  }, [page.id]);
 
   async function loadSlots(dur: number) {
     setLoadingSlots(true);

@@ -297,6 +297,33 @@ export async function listSyncedEvents(
   return events;
 }
 
+export async function listGoogleEventsInRange(
+  userId: string,
+  calendarId: string,
+  timeMin: string,
+  timeMax: string
+): Promise<calendar_v3.Schema$Event[]> {
+  const cal = await getCalendarClient(userId);
+  const events: calendar_v3.Schema$Event[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const res = await cal.events.list({
+      calendarId,
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      showDeleted: false,
+      maxResults: 2500,
+      pageToken,
+    });
+    events.push(...(res.data.items ?? []));
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  return events;
+}
+
 export async function createEvent(
   userId: string,
   calendarId: string,

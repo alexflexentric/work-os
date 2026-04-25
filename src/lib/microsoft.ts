@@ -514,6 +514,29 @@ export function googleEventToGraphBody(ev: {
   };
 }
 
+// Fetch all events visible in a calendar view for the user (all calendars)
+export async function listMicrosoftCalendarView(
+  userId: string,
+  startDateTime: string,
+  endDateTime: string
+): Promise<GraphEvent[]> {
+  const account = await prisma.account.findFirst({
+    where: { userId, provider: { in: ["microsoft-entra-id", "microsoft"] } },
+    select: { id: true, providerAccountId: true, access_token: true, refresh_token: true, expires_at: true },
+  });
+  if (!account) return [];
+
+  const token = await getValidToken(account);
+  const events = await graphGetAll<GraphEvent>(token, "/me/calendarView", {
+    startDateTime,
+    endDateTime,
+    $select: "id,subject,start,end,isAllDay,isCancelled,showAs,location",
+    $top: "500",
+  });
+
+  return events.filter((e) => !e.isCancelled && !e["@removed"]);
+}
+
 // Create a calendar event for a booking — auto-generates Teams link and sends
 // the native Outlook invite to the guest attendee.
 // The organizer's own email is fetched from the connected MS account and added

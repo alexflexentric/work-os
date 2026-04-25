@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -15,11 +15,13 @@ export async function PATCH(
   });
   if (!connection) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const updated = await prisma.calendarConnection.update({
-    where: { id },
-    data: { isActive: !connection.isActive },
-  });
+  const body = await req.json().catch(() => ({}));
+  const data: { color?: string | null; isActive?: boolean } = {};
+  if ("color" in body) data.color = body.color;
+  if ("isActive" in body) data.isActive = body.isActive;
+  if (Object.keys(data).length === 0) data.isActive = !connection.isActive;
 
+  const updated = await prisma.calendarConnection.update({ where: { id }, data });
   return NextResponse.json(updated);
 }
 

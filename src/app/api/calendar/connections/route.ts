@@ -13,6 +13,7 @@ export async function GET() {
       id: true,
       sourceCalendarName: true,
       icalUrl: true,
+      color: true,
       isActive: true,
       lastSyncedAt: true,
       syncErrors: true,

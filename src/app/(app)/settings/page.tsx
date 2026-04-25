@@ -9,11 +9,17 @@ type Connection = {
   id: string;
   sourceCalendarName: string;
   icalUrl: string | null;
+  color: string | null;
   isActive: boolean;
   lastSyncedAt: string | null;
   syncErrors: number;
   lastErrorMessage: string | null;
 };
+
+const APPLE_COLORS = [
+  "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#5AC8FA",
+  "#007AFF", "#AF52DE", "#FF2D55", "#A2845E", "#8E8E93",
+];
 
 const NAV: { group: string; items: { id: Section; label: string }[] }[] = [
   {
@@ -623,6 +629,7 @@ function CalendarPanel({
   const [addingConn, setAddingConn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [expandedColorId, setExpandedColorId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/calendar/calendars")
@@ -690,11 +697,38 @@ function CalendarPanel({
   return (
     <div className="space-y-6">
       <form onSubmit={save} className="space-y-4">
-        <div className="border border-[--border] rounded-lg px-4 py-3 space-y-0.5">
+        <div className="border border-[--border] rounded-lg px-4 py-3 space-y-2">
           <p className="text-xs font-medium text-[--muted-foreground]">Master account</p>
-          <p className="text-sm text-[--foreground]">
-            {providerLabel}{userEmail ? ` · ${userEmail}` : ""}
-          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-full shrink-0"
+              style={{ background: settings.masterCalendarColor ?? "#007AFF" }}
+            />
+            <p className="text-sm text-[--foreground]">
+              {providerLabel}{userEmail ? ` · ${userEmail}` : ""}
+            </p>
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {APPLE_COLORS.map((hex) => {
+              const active = (settings.masterCalendarColor ?? "#007AFF") === hex;
+              return (
+                <button
+                  key={hex}
+                  title={hex}
+                  onClick={() => {
+                    setSettings((prev) => ({ ...prev, masterCalendarColor: hex }));
+                    fetch("/api/settings", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ masterCalendarColor: hex }),
+                    });
+                  }}
+                  className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 ${active ? "border-[--foreground]" : "border-transparent"}`}
+                  style={{ background: hex }}
+                />
+              );
+            })}
+          </div>
         </div>
 
         <div>
@@ -753,51 +787,84 @@ function CalendarPanel({
 
         {connections.length > 0 && (
           <ul className="space-y-px border border-[--border] rounded-lg overflow-hidden">
-            {connections.map((conn) => (
-              <li
-                key={conn.id}
-                className="bg-[--card] border-b border-[--border] last:border-0 px-4 py-3"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[--foreground]">
-                      {conn.sourceCalendarName}
-                    </p>
-                    {conn.icalUrl && (
-                      <p className="text-xs text-[--muted-foreground] mt-0.5 truncate max-w-xs">
-                        {conn.icalUrl}
-                      </p>
-                    )}
-                    {conn.syncErrors > 0 && conn.lastErrorMessage && (
-                      <p className="text-xs text-[--destructive] mt-0.5">{conn.lastErrorMessage}</p>
-                    )}
-                    {conn.lastSyncedAt && conn.syncErrors === 0 && (
-                      <p className="text-xs text-[--muted-foreground] mt-0.5">
-                        Last synced {new Date(conn.lastSyncedAt).toLocaleString()}
-                      </p>
-                    )}
+            {connections.map((conn, i) => {
+              const connColor = conn.color ?? APPLE_COLORS[i % APPLE_COLORS.length];
+              const colorOpen = expandedColorId === conn.id;
+              return (
+                <li key={conn.id} className="bg-[--card] border-b border-[--border] last:border-0 px-4 py-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          title="Change color"
+                          onClick={() => setExpandedColorId(colorOpen ? null : conn.id)}
+                          className="w-3.5 h-3.5 rounded-full shrink-0 border border-[--border] hover:scale-110 transition-transform"
+                          style={{ background: connColor }}
+                        />
+                        <p className="text-sm font-medium text-[--foreground]">{conn.sourceCalendarName}</p>
+                      </div>
+                      {colorOpen && (
+                        <div className="flex gap-1.5 flex-wrap mt-2 ml-5">
+                          {APPLE_COLORS.map((hex) => {
+                            const active = connColor === hex;
+                            return (
+                              <button
+                                key={hex}
+                                title={hex}
+                                onClick={async () => {
+                                  setConnections((prev) =>
+                                    prev.map((c) => (c.id === conn.id ? { ...c, color: hex } : c))
+                                  );
+                                  setExpandedColorId(null);
+                                  await fetch(`/api/calendar/connections/${conn.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ color: hex }),
+                                  });
+                                }}
+                                className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 ${active ? "border-[--foreground]" : "border-transparent"}`}
+                                style={{ background: hex }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                      {conn.icalUrl && (
+                        <p className="text-xs text-[--muted-foreground] mt-0.5 truncate max-w-xs ml-5">
+                          {conn.icalUrl}
+                        </p>
+                      )}
+                      {conn.syncErrors > 0 && conn.lastErrorMessage && (
+                        <p className="text-xs text-[--destructive] mt-0.5 ml-5">{conn.lastErrorMessage}</p>
+                      )}
+                      {conn.lastSyncedAt && conn.syncErrors === 0 && (
+                        <p className="text-xs text-[--muted-foreground] mt-0.5 ml-5">
+                          Last synced {new Date(conn.lastSyncedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => toggleConnection(conn.id)}
+                        className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
+                          conn.isActive
+                            ? "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"
+                            : "border-[--border] text-[--muted-foreground] opacity-50 hover:opacity-100"
+                        }`}
+                      >
+                        {conn.isActive ? "Active" : "Paused"}
+                      </button>
+                      <button
+                        onClick={() => deleteConnection(conn.id)}
+                        className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--destructive] transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => toggleConnection(conn.id)}
-                      className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
-                        conn.isActive
-                          ? "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"
-                          : "border-[--border] text-[--muted-foreground] opacity-50 hover:opacity-100"
-                      }`}
-                    >
-                      {conn.isActive ? "Active" : "Paused"}
-                    </button>
-                    <button
-                      onClick={() => deleteConnection(conn.id)}
-                      className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--destructive] transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
 

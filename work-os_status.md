@@ -6,12 +6,20 @@
 
 ## Just Completed
 
+**Simplify pass** — code quality cleanup after Stages 3–6 (2026-04-25)
+
+- `TonesPanel` + `FormatsPanel` merged into a single generic `ItemPanel` (−115 lines); panels now self-fetch and self-manage state; parent `SettingsPage` no longer holds tone/format state
+- `CalendarPanel` stale-closure bug fixed — `setSettings` uses functional updater; own `saving`/`saved` state (was incorrectly shared with API Keys form); `eslint-disable` removed
+- Chevron SVG data URI extracted to `CHEVRON_STYLE` constant in both `settings/page.tsx` and `translation/page.tsx` (was duplicated 3×)
+- `microsoft.ts`: `getMsTokenUrl` + `getMsClientCredentials` merged into `getMsAppConfig()` — one DB read per token refresh instead of two
+- `google.ts`: `Account` fetch and `createOAuth2Client()` parallelised with `Promise.all`; unused `CALENDAR_SCOPE` constant removed
+- Connections POST route: redundant `.trim()` calls reduced to one pass
+
 **Stage 6** — Settings Calendar panel upgrade (2026-04-25)
 
 - `CalendarPanel` rewritten as a stateful component with its own hooks
-- **Primary calendar**: `calendarId` text input replaced with a `<select>` populated from `GET /api/calendar/calendars`; auto-selects the primary calendar if `calendarId` is not yet set in settings
-- Falls back gracefully to a text input if the calendars API call fails or returns empty
-- **iCal connections**: full list (name, URL, last-synced, error message) with Active/Paused toggle and Delete buttons; Add iCal feed form (name + URL)
+- Primary calendar `<select>` populated from `GET /api/calendar/calendars`; auto-selects primary; falls back to text input if API unavailable
+- iCal connections list with Active/Paused toggle and Delete; Add iCal feed form (name + URL)
 - All wired to `GET/POST /api/calendar/connections` and `PATCH/DELETE /api/calendar/connections/[id]`
 
 ---

@@ -27,11 +27,13 @@ export async function buildAuthHandlers() {
   const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
   const providers = [];
 
-  if (config?.googleClientId && config?.googleClientSecret) {
+  const googleClientId = config?.googleClientId ?? process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = config?.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET;
+  if (googleClientId && googleClientSecret) {
     providers.push(
       Google({
-        clientId: config.googleClientId,
-        clientSecret: config.googleClientSecret,
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
         authorization: {
           params: {
             scope: "openid email profile https://www.googleapis.com/auth/calendar",
@@ -43,12 +45,15 @@ export async function buildAuthHandlers() {
     );
   }
 
-  if (config?.microsoftClientId && config?.microsoftClientSecret) {
+  const msClientId = config?.microsoftClientId ?? process.env.MICROSOFT_CLIENT_ID;
+  const msClientSecret = config?.microsoftClientSecret ?? process.env.MICROSOFT_CLIENT_SECRET;
+  const msTenantId = config?.microsoftTenantId ?? process.env.MICROSOFT_TENANT_ID ?? "common";
+  if (msClientId && msClientSecret) {
     providers.push(
       MicrosoftEntraID({
-        clientId: config.microsoftClientId,
-        clientSecret: config.microsoftClientSecret,
-        issuer: `https://login.microsoftonline.com/${config.microsoftTenantId ?? "common"}/v2.0`,
+        clientId: msClientId,
+        clientSecret: msClientSecret,
+        issuer: `https://login.microsoftonline.com/${msTenantId}/v2.0`,
         authorization: {
           params: {
             scope: "openid email profile offline_access Calendars.ReadWrite",

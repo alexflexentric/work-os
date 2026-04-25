@@ -525,10 +525,11 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
       if (newFormats.length > 0) parts.push(`${newFormats.length} format(s)`);
       if (newTones.length > 0) parts.push(`${newTones.length} tone(s)`);
 
-      setImportResult({
-        ok: true,
-        message: parts.length > 0 ? `Imported: ${parts.join(", ")}.` : "Nothing new to import — all items already exist.",
-      });
+      if (parts.length > 0) {
+        window.location.reload();
+      } else {
+        setImportResult({ ok: true, message: "Nothing new to import — all items already exist." });
+      }
     } catch {
       setImportResult({ ok: false, message: "Import failed. Make sure the file is a valid Work OS settings export." });
     } finally {

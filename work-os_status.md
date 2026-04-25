@@ -6,6 +6,18 @@
 
 ## Just Completed
 
+**Booking page: full internal booking flow** (2026-04-25)
+
+- `/api/availability` — new authenticated GET route (mirrors public endpoint, avoids CORS); accepts `slug`, `duration`, `days`
+- `/api/bookings` — added POST handler (auth-gated); same logic as public bookings route: slot re-validation → Outlook event + Teams link → Booking record → Resend emails
+- `/booking` page — full multi-step flow matching Lovable UX:
+  - **Book tab**: booking page selector (pills if multiple) → Duration step (pills) → Date & Time step (scrollable day pills + time slot grid) → Details step (pre-filled name/email, company, subject, notes, Online/Offline toggle) → Confirmation screen with Teams join button
+  - **Bookings tab**: upcoming / past bookings list with Teams links
+  - Step breadcrumb with back navigation
+  - Slot taken / error handling
+
+---
+
 **Booking system** (2026-04-25)
 
 - New `BookingPage` and `Booking` Prisma models; migration at `20260425300000_add_booking_pages`

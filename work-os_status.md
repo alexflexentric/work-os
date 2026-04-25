@@ -6,6 +6,13 @@
 
 ## Just Completed
 
+**Fix Railway build failure: Prisma config** (2026-04-25)
+
+- `prisma.config.ts` (Prisma v7 auto-generated) was failing to load in the Railway build environment ("Failed to load config file as a TypeScript/JavaScript module")
+- Deleted `prisma.config.ts` and restored `url = env("DATABASE_URL")` to the `datasource db` block in `prisma/schema.prisma` — the traditional approach that doesn't require TypeScript config loading
+
+---
+
 **Google disabled + admin auto-approve + email sender** (2026-04-25)
 
 - Google sign-in/sign-up commented out across `auth.ts`, `SignInButtons.tsx`, `setup/page.tsx` — Microsoft-only

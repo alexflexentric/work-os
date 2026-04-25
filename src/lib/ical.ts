@@ -188,15 +188,19 @@ function parseRRule(str: string): {
   };
 }
 
-function addUTCDays(d: Date, days: number): Date {
-  return new Date(d.getTime() + days * 86_400_000);
+// Advance a calendar date (y, mo 0-indexed, d) by N days, handling month/year overflow.
+function addCalDays(y: number, mo: number, d: number, days: number): [number, number, number] {
+  const dt = new Date(Date.UTC(y, mo, d + days));
+  return [dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()];
 }
 
 // Expand an RRULE into occurrence start times within [windowStart, windowEnd].
-// dtstart must be UTC. Returns dates in UTC.
+// dtstart: UTC. tzid: event timezone — when supplied, the wall-clock time of each
+// instance is fixed in that timezone so DST shifts don't move the occurrence time.
 function expandRRule(
   dtstart: Date,
   rruleStr: string,
+  tzid: string | undefined,
   windowStart: Date,
   windowEnd: Date
 ): Date[] {
@@ -205,88 +209,109 @@ function expandRRule(
   const instances: Date[] = [];
   const MAX = 2000;
 
+  // Extract the wall-clock time and starting calendar date from dtstart.
+  // For timezone-aware events we work in the event's local timezone so that the
+  // wall-clock time stays constant across DST boundaries (e.g. "every Monday at
+  // 09:00 Warsaw" stays at 09:00 even when clocks change).
+  let lh: number, lm: number, ls: number;
+  let startY: number, startMo: number, startD: number;
+  let toUtcDate: (y: number, mo: number, d: number) => Date;
+
+  if (tzid) {
+    // toLocaleString("sv") always returns "YYYY-MM-DD HH:mm:ss"
+    const localStr = dtstart.toLocaleString("sv", { timeZone: tzid });
+    const [datePart, timePart] = localStr.split(" ");
+    const dp = datePart.split("-").map(Number);
+    startY = dp[0]; startMo = dp[1] - 1; startD = dp[2];
+    const tp = timePart.split(":").map(Number);
+    lh = tp[0]; lm = tp[1]; ls = tp[2];
+    toUtcDate = (y, mo, d) => localToUtc(y, mo, d, lh, lm, ls, tzid);
+  } else {
+    startY = dtstart.getUTCFullYear();
+    startMo = dtstart.getUTCMonth();
+    startD = dtstart.getUTCDate();
+    lh = dtstart.getUTCHours();
+    lm = dtstart.getUTCMinutes();
+    ls = dtstart.getUTCSeconds();
+    toUtcDate = (y, mo, d) => new Date(Date.UTC(y, mo, d, lh, lm, ls));
+  }
+
   if (freq === "DAILY") {
-    let cur = new Date(dtstart);
+    let [y, mo, d] = [startY, startMo, startD];
     // Jump ahead to near windowStart for performance (only safe without COUNT)
-    if (!count && !byDay && windowStart > cur) {
-      const skip = Math.max(0, Math.floor((windowStart.getTime() - cur.getTime()) / (interval * 86_400_000)) - 1);
-      cur = addUTCDays(cur, skip * interval);
+    if (!count && !byDay && windowStart > dtstart) {
+      const skip = Math.max(0, Math.floor((windowStart.getTime() - dtstart.getTime()) / (interval * 86_400_000)) - 1);
+      [y, mo, d] = addCalDays(y, mo, d, skip * interval);
     }
-    while (cur <= ceiling && instances.length < MAX) {
-      if ((!byDay || byDay.includes(cur.getUTCDay())) && cur >= windowStart && cur >= dtstart) {
-        instances.push(new Date(cur));
+    while (instances.length < MAX) {
+      const candidate = toUtcDate(y, mo, d);
+      if (candidate > ceiling) break;
+      if ((!byDay || byDay.includes(candidate.getUTCDay())) && candidate >= windowStart && candidate >= dtstart) {
+        instances.push(candidate);
       }
       if (count !== null && instances.length >= count) break;
-      cur = addUTCDays(cur, byDay ? 1 : interval);
+      [y, mo, d] = addCalDays(y, mo, d, byDay ? 1 : interval);
     }
   } else if (freq === "WEEKLY") {
-    const days = byDay ?? [dtstart.getUTCDay()];
+    const dtUtcDay = toUtcDate(startY, startMo, startD).getUTCDay();
+    const days = byDay ?? [dtUtcDay];
     const wkstDay = 1; // Monday (RFC 5545 default)
-    const daysToWkst = (dtstart.getUTCDay() - wkstDay + 7) % 7;
-    let weekStart = addUTCDays(dtstart, -daysToWkst);
+    const daysToWkst = (dtUtcDay - wkstDay + 7) % 7;
+    let [wy, wmo, wd] = addCalDays(startY, startMo, startD, -daysToWkst);
 
     // Jump ahead to near windowStart for performance (only safe without COUNT)
-    if (!count && windowStart > weekStart) {
-      const weeksAhead = Math.max(
-        0,
-        Math.floor((windowStart.getTime() - weekStart.getTime()) / (7 * 86_400_000 * interval)) - 1
-      );
-      weekStart = addUTCDays(weekStart, weeksAhead * 7 * interval);
+    if (!count && windowStart > dtstart) {
+      const weeksAhead = Math.max(0, Math.floor((windowStart.getTime() - dtstart.getTime()) / (7 * 86_400_000 * interval)) - 1);
+      [wy, wmo, wd] = addCalDays(wy, wmo, wd, weeksAhead * 7 * interval);
     }
 
-    while (weekStart <= ceiling && instances.length < MAX) {
-      for (const d of days) {
-        const daysFromWkst = (d - wkstDay + 7) % 7;
-        const candidate = addUTCDays(weekStart, daysFromWkst);
+    while (instances.length < MAX) {
+      if (toUtcDate(wy, wmo, wd) > ceiling) break;
+      for (const day of days) {
+        const daysFromWkst = (day - wkstDay + 7) % 7;
+        const [cy, cmo, cd] = addCalDays(wy, wmo, wd, daysFromWkst);
+        const candidate = toUtcDate(cy, cmo, cd);
         if (candidate >= dtstart && candidate <= ceiling && candidate >= windowStart) {
-          instances.push(new Date(candidate));
+          instances.push(candidate);
         }
         if (count !== null && instances.length >= count) break;
       }
       if (count !== null && instances.length >= count) break;
-      weekStart = addUTCDays(weekStart, 7 * interval);
+      [wy, wmo, wd] = addCalDays(wy, wmo, wd, 7 * interval);
     }
     instances.sort((a, b) => a.getTime() - b.getTime());
   } else if (freq === "MONTHLY") {
-    let year = dtstart.getUTCFullYear();
-    let month = dtstart.getUTCMonth();
-    const h = dtstart.getUTCHours();
-    const mi = dtstart.getUTCMinutes();
-    const s = dtstart.getUTCSeconds();
-
+    let y = startY, mo = startMo;
     while (instances.length < MAX) {
-      if (new Date(Date.UTC(year, month, 1)) > ceiling) break;
-      const targetDays = byMonthDay ?? [dtstart.getUTCDate()];
+      if (new Date(Date.UTC(y, mo, 1)) > ceiling) break;
+      const targetDays = byMonthDay ?? [startD];
       for (const day of targetDays) {
-        const c = new Date(Date.UTC(year, month, day, h, mi, s));
+        const candidate = toUtcDate(y, mo, day);
         // Skip if date overflowed to next month (e.g. Feb 31)
-        if (c.getUTCMonth() !== ((month % 12 + 12) % 12)) continue;
-        if (c >= dtstart && c <= ceiling && c >= windowStart) {
-          instances.push(c);
+        const candidateMo = tzid
+          ? parseInt(candidate.toLocaleString("sv", { timeZone: tzid }).split("-")[1]) - 1
+          : candidate.getUTCMonth();
+        if (candidateMo !== ((mo % 12 + 12) % 12)) continue;
+        if (candidate >= dtstart && candidate <= ceiling && candidate >= windowStart) {
+          instances.push(candidate);
         }
         if (count !== null && instances.length >= count) break;
       }
       if (count !== null && instances.length >= count) break;
-      month += interval;
-      if (month >= 12) {
-        year += Math.floor(month / 12);
-        month = month % 12;
-      }
+      mo += interval;
+      if (mo >= 12) { y += Math.floor(mo / 12); mo = mo % 12; }
     }
     instances.sort((a, b) => a.getTime() - b.getTime());
   } else if (freq === "YEARLY") {
-    let year = dtstart.getUTCFullYear();
+    let y = startY;
     while (instances.length < MAX) {
-      const c = new Date(
-        Date.UTC(year, dtstart.getUTCMonth(), dtstart.getUTCDate(),
-          dtstart.getUTCHours(), dtstart.getUTCMinutes(), dtstart.getUTCSeconds())
-      );
-      if (c > ceiling) break;
-      if (c >= dtstart && c >= windowStart) {
-        instances.push(c);
+      const candidate = toUtcDate(y, startMo, startD);
+      if (candidate > ceiling) break;
+      if (candidate >= dtstart && candidate >= windowStart) {
+        instances.push(candidate);
         if (count !== null && instances.length >= count) break;
       }
-      year += interval;
+      y += interval;
     }
   }
 
@@ -471,7 +496,7 @@ export function parseIcalText(
 
     if (master.rrule) {
       // Expand recurring series into individual instances
-      const instanceStarts = expandRRule(master.start, master.rrule, wStart, wEnd);
+      const instanceStarts = expandRRule(master.start, master.rrule, master.timezone, wStart, wEnd);
       const duration = master.end.getTime() - master.start.getTime();
 
       for (const instanceStart of instanceStarts) {

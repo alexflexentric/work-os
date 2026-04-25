@@ -6,12 +6,13 @@
 
 ## Just Completed
 
-**iCal recurring event expansion** (2026-04-25)
+**iCal recurring event expansion + DST fix** (2026-04-25)
 
 - `lib/ical.ts` — rewrote to expand `RRULE` into individual instances within the sync window instead of storing only the master (first) occurrence
 - Handles `FREQ=DAILY/WEEKLY/MONTHLY/YEARLY`, `INTERVAL`, `UNTIL`, `COUNT`, `BYDAY`, `BYMONTHDAY`
 - Handles `EXDATE` (per-instance exclusions) and `RECURRENCE-ID` exception VEVENTs (moved or cancelled instances)
 - Each expanded instance stored with stable `uid = originalUid:instanceStartIso` — allows the DB upsert to address each instance independently
+- DST-correct: expansion works in local calendar dates (using `DTSTART;TZID`) so the wall-clock time stays constant (e.g. "09:00 Warsaw" stays at 09:00 in both CET and CEST); without TZID, expands in UTC as before
 - `fetchAndParseIcal` now accepts optional `windowStart`/`windowEnd` and passes them through; sync route passes the existing 30-back/120-ahead window
 - No new npm dependency — RRULE expansion implemented inline
 - First sync after deploy will clean up old single-occurrence rows and create the expanded set

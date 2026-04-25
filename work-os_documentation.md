@@ -144,7 +144,7 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 - Manual Refresh button re-runs sync and reloads events
 - Live legend showing which calendar each color represents
 - **Sync** (`POST /api/calendar/sync`): fetches master calendar (MS Graph `calendarView` or Google `events.list`) + all active iCal feeds; upserts into `CalendarEvent`; prunes stale entries. Window: 30 days back → 120 days forward.
-- **iCal RRULE expansion**: `lib/ical.ts` expands recurring events (`RRULE`) into individual instances within the sync window. Handles `FREQ=DAILY/WEEKLY/MONTHLY/YEARLY`, `INTERVAL`, `UNTIL`, `COUNT`, `BYDAY`, `BYMONTHDAY`, `EXDATE`, and `RECURRENCE-ID` exception overrides. Each expanded instance gets a stable `uid = originalUid:instanceStartIso` for DB upsert. No external library — implemented inline.
+- **iCal RRULE expansion**: `lib/ical.ts` expands recurring events (`RRULE`) into individual instances within the sync window. Handles `FREQ=DAILY/WEEKLY/MONTHLY/YEARLY`, `INTERVAL`, `UNTIL`, `COUNT`, `BYDAY`, `BYMONTHDAY`, `EXDATE`, and `RECURRENCE-ID` exception overrides. Each expanded instance gets a stable `uid = originalUid:instanceStartIso` for DB upsert. No external library — implemented inline. DST-aware: expansion works in the event's local timezone (from `DTSTART;TZID=...`) so the wall-clock time stays constant across summer/winter transitions.
 - **No background worker running** — sync is on-demand only; a Railway Cron service calling the sync endpoint is the recommended next step
 
 ### Calendar Settings (in `/settings → Calendar`)

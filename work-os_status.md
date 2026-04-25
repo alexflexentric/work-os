@@ -6,6 +6,15 @@
 
 ## Just Completed
 
+**Calendar view hour range + settings save fixes** (2026-04-25)
+
+- `calendarStartHour` (default 0) and `calendarEndHour` (default 24) added to `UserSettings` — calendar view renders only the visible hour range
+- Settings save was silently failing: `Record<string, string>` state sent strings for `Int` fields, causing Prisma validation errors with no user-visible feedback
+- Fixed `POST /api/settings` to build a properly-typed Prisma update object, coercing all three `Int` fields (`syncInterval`, `calendarStartHour`, `calendarEndHour`) via `parseInt`
+- Added `try/catch` to the route so errors return `{ error }` with status 500 instead of crashing
+- Settings page save now only shows "Saved" when `res.ok`, and refreshes local state from the API response so inputs reflect the actual DB values
+- Calendar view uses `Number()` coercion as a safety net when reading the hour settings from the API
+
 **Fix Railway build failure: Prisma config** (2026-04-25)
 
 - `prisma.config.ts` (Prisma v7 auto-generated) was failing to load in the Railway build environment ("Failed to load config file as a TypeScript/JavaScript module")

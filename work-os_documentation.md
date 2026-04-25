@@ -92,7 +92,9 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 | `masterCalendarProvider` | `'google'` or `'microsoft'` — always derived from OAuth Account at runtime, not trusted from DB |
 | `masterCalendarColor` | Hex color for master calendar in the calendar view (default `#007AFF`) |
 | `calendarId` | Selected calendar ID within the master account |
-| `syncInterval` | Minutes between iCal sync runs (default 15) |
+| `syncInterval` | Minutes between iCal sync runs (default 15) — `Int`, coerced in API |
+| `calendarStartHour` | First visible hour in the calendar view (default 0 = midnight) — `Int` |
+| `calendarEndHour` | Last visible hour in the calendar view (default 24) — `Int` |
 | `calendarSyncedAt` | Timestamp of last successful `/api/calendar/sync` run |
 
 ---
@@ -149,6 +151,8 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 - Per-iCal-connection color picker: click the color dot to expand inline palette
 - Colors stored in `UserSettings.masterCalendarColor` and `CalendarConnection.color`
 - Primary calendar select, sync interval setting
+- **Calendar view hours**: start/end hour inputs (`calendarStartHour`, `calendarEndHour`) — controls which hours the week grid renders; defaults 0–24
+- `POST /api/settings` builds a typed Prisma update and coerces all `Int` fields via `parseInt`; returns the saved record so the UI always reflects actual DB values
 
 ### Legacy Calendar Sync (iCal → Google/Microsoft)
 - `lib/sync-engine.ts` syncs iCal feeds into the master calendar via Google Calendar API or MS Graph

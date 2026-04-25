@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 
-type Section = "api-keys" | "tones" | "formats" | "calendar";
+type Section = "api-keys" | "tones" | "formats" | "calendar" | "import-export";
 type Item = { id: string; name: string; instructions: string };
 type CalendarOption = { id: string; name: string; primary: boolean };
 type Connection = {
@@ -16,7 +16,13 @@ type Connection = {
 };
 
 const NAV: { group: string; items: { id: Section; label: string }[] }[] = [
-  { group: "General", items: [{ id: "api-keys", label: "API Keys" }] },
+  {
+    group: "General",
+    items: [
+      { id: "api-keys", label: "API Keys" },
+      { id: "import-export", label: "Import / Export" },
+    ],
+  },
   {
     group: "Translation",
     items: [
@@ -151,6 +157,10 @@ export default function SettingsPage() {
               showDefaultBadge
               inputCls={inputCls}
             />
+          )}
+
+          {section === "import-export" && (
+            <ImportExportPanel inputCls={inputCls} />
           )}
 
           {section === "calendar" && (
@@ -360,6 +370,215 @@ function ItemPanel({
           Add
         </button>
       </form>
+    </div>
+  );
+}
+
+function parseSettingsFile(text: string): {
+  apiKeys: Record<string, string>;
+  formats: { name: string; instructions: string }[];
+  tones: { name: string; instructions: string }[];
+} {
+  const lines = text.split("\n");
+  let section: "none" | "api-keys" | "formats" | "tones" = "none";
+  let currentName = "";
+  let currentLines: string[] = [];
+  const apiKeys: Record<string, string> = {};
+  const formats: { name: string; instructions: string }[] = [];
+  const tones: { name: string; instructions: string }[] = [];
+
+  function flush() {
+    if (!currentName) return;
+    const instructions = currentLines.join("\n").trim();
+    if (section === "formats" && instructions) formats.push({ name: currentName, instructions });
+    if (section === "tones" && instructions) tones.push({ name: currentName, instructions });
+    currentName = "";
+    currentLines = [];
+  }
+
+  for (const line of lines) {
+    if (line.startsWith("## API Keys")) { flush(); section = "api-keys"; continue; }
+    if (line.startsWith("## Formats")) { flush(); section = "formats"; continue; }
+    if (line.startsWith("## Tones")) { flush(); section = "tones"; continue; }
+    if (line.startsWith("## ")) { flush(); section = "none"; continue; }
+
+    if (line.startsWith("### ") && (section === "formats" || section === "tones")) {
+      flush();
+      currentName = line.slice(4).trim();
+      continue;
+    }
+
+    if (section === "api-keys") {
+      const sep = line.indexOf(": ");
+      if (sep > 0) {
+        const key = line.slice(0, sep).trim();
+        const value = line.slice(sep + 2).trim();
+        if (key && value) apiKeys[key] = value;
+      }
+      continue;
+    }
+
+    if (currentName) currentLines.push(line);
+  }
+  flush();
+
+  return { apiKeys, formats, tones };
+}
+
+function ImportExportPanel({ inputCls }: { inputCls: string }) {
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const [settingsData, formatsData, tonesData] = await Promise.all([
+        fetch("/api/settings").then((r) => r.json()),
+        fetch("/api/formats").then((r) => r.json()),
+        fetch("/api/tones").then((r) => r.json()),
+      ]);
+
+      const lines: string[] = [
+        "# Work OS Settings",
+        `Exported: ${new Date().toISOString().split("T")[0]}`,
+        "",
+        "## API Keys",
+        "",
+      ];
+      if (settingsData.anthropicApiKey) lines.push(`anthropicApiKey: ${settingsData.anthropicApiKey}`);
+      if (settingsData.openaiApiKey) lines.push(`openaiApiKey: ${settingsData.openaiApiKey}`);
+      lines.push("");
+
+      lines.push("## Formats", "");
+      for (const f of (formatsData as Item[])) {
+        lines.push(`### ${f.name}`, f.instructions, "");
+      }
+
+      lines.push("## Tones", "");
+      for (const t of (tonesData as Item[])) {
+        lines.push(`### ${t.name}`, t.instructions, "");
+      }
+
+      const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `work-os-settings-${new Date().toISOString().split("T")[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const { apiKeys, formats, tones } = parseSettingsFile(text);
+
+      if (Object.keys(apiKeys).length > 0) {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiKeys),
+        });
+      }
+
+      const [existingFormats, existingTones] = await Promise.all([
+        fetch("/api/formats").then((r) => r.json()),
+        fetch("/api/tones").then((r) => r.json()),
+      ]);
+
+      const existingFormatNames = new Set((existingFormats as Item[]).map((f) => f.name.toLowerCase()));
+      const existingToneNames = new Set((existingTones as Item[]).map((t) => t.name.toLowerCase()));
+      const newFormats = formats.filter((f) => !existingFormatNames.has(f.name.toLowerCase()));
+      const newTones = tones.filter((t) => !existingToneNames.has(t.name.toLowerCase()));
+
+      await Promise.all([
+        ...newFormats.map((f) =>
+          fetch("/api/formats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(f),
+          })
+        ),
+        ...newTones.map((t) =>
+          fetch("/api/tones", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(t),
+          })
+        ),
+      ]);
+
+      const parts: string[] = [];
+      if (Object.keys(apiKeys).length > 0) parts.push(`${Object.keys(apiKeys).length} API key(s)`);
+      if (newFormats.length > 0) parts.push(`${newFormats.length} format(s)`);
+      if (newTones.length > 0) parts.push(`${newTones.length} tone(s)`);
+
+      setImportResult({
+        ok: true,
+        message: parts.length > 0 ? `Imported: ${parts.join(", ")}.` : "Nothing new to import — all items already exist.",
+      });
+    } catch {
+      setImportResult({ ok: false, message: "Import failed. Make sure the file is a valid Work OS settings export." });
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-[--muted-foreground]">Export</p>
+        <p className="text-xs text-[--muted-foreground]">
+          Downloads a Markdown file with your API keys, formats, and tones. Keep it safe — it contains your API keys in plain text.
+        </p>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-[--foreground] text-[--background] hover:opacity-90 disabled:opacity-40 transition-opacity"
+        >
+          {exporting ? "Exporting…" : "Export settings"}
+        </button>
+      </div>
+
+      <div className="border-t border-[--border]" />
+
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-[--muted-foreground]">Import</p>
+        <p className="text-xs text-[--muted-foreground]">
+          Restores API keys, formats, and tones from a previously exported file. Existing items with the same name are skipped.
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,text/markdown"
+          onChange={handleImport}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={importing}
+          className="px-4 py-2 rounded-lg text-sm font-medium border border-[--border] text-[--foreground] hover:bg-[--muted] disabled:opacity-40 transition-colors"
+        >
+          {importing ? "Importing…" : "Import settings"}
+        </button>
+        {importResult && (
+          <p className={`text-xs ${importResult.ok ? "text-[--foreground]" : "text-[--destructive]"}`}>
+            {importResult.message}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

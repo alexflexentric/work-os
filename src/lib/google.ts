@@ -1,8 +1,6 @@
 import { google, calendar_v3 } from "googleapis";
 import { prisma } from "@/lib/db";
 
-const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
-
 // colorId → hex — used for backgroundColor patch (avoids Google's internal ID mapping)
 const COLOR_HEX: Record<string, string> = {
   "1": "#d50000",
@@ -28,15 +26,14 @@ async function createOAuth2Client() {
 }
 
 async function getAuthenticatedClient(userId: string) {
-  const account = await prisma.account.findFirst({
-    where: { userId, provider: "google" },
-  });
+  const [account, oauth2Client] = await Promise.all([
+    prisma.account.findFirst({ where: { userId, provider: "google" } }),
+    createOAuth2Client(),
+  ]);
 
   if (!account?.access_token) {
     throw new Error("No Google account connected for user");
   }
-
-  const oauth2Client = await createOAuth2Client();
   oauth2Client.setCredentials({
     access_token: account.access_token,
     refresh_token: account.refresh_token ?? undefined,

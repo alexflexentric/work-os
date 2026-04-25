@@ -27,8 +27,10 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, url } = await req.json();
-  if (!name?.trim() || !url?.trim()) {
+  const body = await req.json();
+  const name = body.name?.trim() ?? "";
+  const url = body.url?.trim() ?? "";
+  if (!name || !url) {
     return NextResponse.json({ error: "name and url are required" }, { status: 400 });
   }
 
@@ -36,9 +38,9 @@ export async function POST(req: Request) {
     data: {
       userId: session.userId,
       sourceType: "ical",
-      sourceCalendarName: name.trim(),
-      icalUrl: url.trim(),
-      targetGoogleCalendarName: name.trim(),
+      sourceCalendarName: name,
+      icalUrl: url,
+      targetGoogleCalendarName: name,
     },
   });
 

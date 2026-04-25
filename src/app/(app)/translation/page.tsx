@@ -22,6 +22,15 @@ const LANG_CODES: Record<string, string> = {
 type Tone = { id: string; name: string; instructions: string };
 type Format = { id: string; name: string; instructions: string };
 
+const SELECT_CLS =
+  "border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 appearance-none pr-8 cursor-pointer";
+const CHEVRON_STYLE = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat" as const,
+  backgroundPosition: "right 10px center",
+};
+
 function Pill({
   active,
   onClick,
@@ -309,8 +318,8 @@ export default function TranslationPage() {
           <select
             value={formatId}
             onChange={(e) => setFormatId(e.target.value)}
-            className="border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 appearance-none pr-8 cursor-pointer"
-            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
+            className={SELECT_CLS}
+            style={CHEVRON_STYLE}
           >
             {formats.map((f) => (
               <option key={f.id} value={f.id}>{f.name}</option>
@@ -333,8 +342,8 @@ export default function TranslationPage() {
           <select
             value={toneId}
             onChange={(e) => setToneId(e.target.value)}
-            className="border border-[--border] rounded-lg px-3 py-1.5 text-sm bg-[--card] text-[--foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring] focus-visible:ring-offset-2 appearance-none pr-8 cursor-pointer"
-            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
+            className={SELECT_CLS}
+            style={CHEVRON_STYLE}
           >
             {tones.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>

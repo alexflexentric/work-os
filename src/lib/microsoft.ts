@@ -2,15 +2,11 @@ import { prisma } from "@/lib/db";
 
 const MS_GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 
-async function getMsTokenUrl(): Promise<string> {
+async function getMsAppConfig(): Promise<{ tokenUrl: string; clientId: string; clientSecret: string }> {
   const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
   const tenant = config?.microsoftTenantId ?? "common";
-  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`;
-}
-
-async function getMsClientCredentials(): Promise<{ clientId: string; clientSecret: string }> {
-  const config = await prisma.appConfig.findUnique({ where: { id: "singleton" } });
   return {
+    tokenUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
     clientId: config?.microsoftClientId ?? process.env.MICROSOFT_CLIENT_ID ?? "",
     clientSecret: config?.microsoftClientSecret ?? process.env.MICROSOFT_CLIENT_SECRET ?? "",
   };
@@ -59,10 +55,7 @@ export interface BookingEventResult {
 async function refreshToken(account: MsAccount): Promise<string> {
   if (!account.refresh_token) throw new Error("No MS refresh token available");
 
-  const [tokenUrl, { clientId, clientSecret }] = await Promise.all([
-    getMsTokenUrl(),
-    getMsClientCredentials(),
-  ]);
+  const { tokenUrl, clientId, clientSecret } = await getMsAppConfig();
 
   const res = await fetch(tokenUrl, {
     method: "POST",

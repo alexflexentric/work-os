@@ -630,6 +630,7 @@ type BookingPageData = {
 
 const DURATION_OPTIONS = [15, 30, 60, 90, 120];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SCHEDULE_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon → Sun
 const COMMON_TIMEZONES = [
   "UTC", "Europe/London", "Europe/Paris", "Europe/Brussels", "Europe/Warsaw",
   "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
@@ -741,7 +742,9 @@ function BookingPanel({
   }) {
     return (
       <div className="space-y-1.5">
-        {schedule.map((day, idx) => (
+        {SCHEDULE_DISPLAY_ORDER.map((idx) => {
+          const day = schedule[idx];
+          return (
           <div key={idx} className="flex items-center gap-2">
             <span className="text-xs text-[--muted-foreground] w-7 shrink-0">{DAY_LABELS[idx]}</span>
             <button
@@ -772,7 +775,8 @@ function BookingPanel({
               <span className="text-xs text-[--muted-foreground]">Unavailable</span>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -816,13 +820,13 @@ function BookingPanel({
           <label className="block text-xs font-medium text-[--muted-foreground] mb-1.5">Allowed durations</label>
           <div className="flex gap-2 flex-wrap">
             {DURATION_OPTIONS.map((d) => {
-              const active = (data.durations ?? []).includes(d);
+              const active = (data.durations ?? []).map(Number).includes(d);
               return (
                 <button
                   key={d}
                   type="button"
                   onClick={() => toggleDuration(d, data.durations ?? [], (v) => setData({ ...data, durations: v }))}
-                  className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${active ? "bg-[--foreground] text-[--background] border-[--foreground]" : "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"}`}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${active ? "bg-accent text-white border-accent" : "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"}`}
                 >
                   {d} min
                 </button>

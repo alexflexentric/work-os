@@ -27,21 +27,28 @@ type ConfirmedBooking = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(localIso: string, timezone: string) {
-  const d = new Date(localIso + "Z");
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: timezone });
+// localIso is already the wall-clock time in the booking page timezone (e.g. "2026-04-28T15:00:00").
+// Construct a UTC Date with the same numeric values so we can format with timeZone:"UTC"
+// and get the correct display — avoids the +offset shift from "Z" or local-browser interpretation.
+function wallClockToUtcDate(localIso: string): Date {
+  const [datePart, timePart = "00:00:00"] = localIso.split("T");
+  const [y, m, d] = datePart.split("-").map(Number);
+  const [h, min] = timePart.split(":").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, h, min));
 }
 
-function formatTime(localIso: string, timezone: string) {
-  const d = new Date(localIso + "Z");
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: timezone });
+function formatDate(localIso: string) {
+  return wallClockToUtcDate(localIso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-function formatFull(localIso: string, timezone: string, durationMinutes: number) {
-  const d = new Date(localIso + "Z");
-  return d.toLocaleString("en-GB", {
+function formatTime(localIso: string) {
+  return localIso.split("T")[1]?.slice(0, 5) ?? "";
+}
+
+function formatFull(localIso: string, durationMinutes: number) {
+  return wallClockToUtcDate(localIso).toLocaleString("en-GB", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit", timeZone: timezone,
+    hour: "2-digit", minute: "2-digit", timeZone: "UTC",
   }) + ` · ${durationMinutes} min`;
 }
 
@@ -225,7 +232,7 @@ function BookingFlow({
         bookingId: data.bookingId,
         teamsLink: data.teamsLink,
         subject: form.subject,
-        dateLabel: formatFull(selectedSlot.start, page.timezone, duration),
+        dateLabel: formatFull(selectedSlot.start, duration),
         durationMinutes: duration,
         location: form.location,
       });
@@ -391,10 +398,10 @@ function BookingFlow({
                 {availableDates.map((dateKey) => {
                   const sample = slotsByDate[dateKey][0];
                   const active = selectedDate === dateKey;
-                  const d = new Date(sample.start + "Z");
-                  const dow = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: page.timezone });
-                  const day = d.toLocaleDateString("en-GB", { day: "numeric", timeZone: page.timezone });
-                  const mon = d.toLocaleDateString("en-GB", { month: "short", timeZone: page.timezone });
+                  const d = wallClockToUtcDate(sample.start);
+                  const dow = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+                  const day = d.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
+                  const mon = d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
                   return (
                     <button
                       key={dateKey}
@@ -426,7 +433,7 @@ function BookingFlow({
                             active ? "bg-accent text-white border-accent" : "border-[--border] text-[--foreground] hover:border-accent"
                           }`}
                         >
-                          {formatTime(slot.start, page.timezone)}
+                          {formatTime(slot.start)}
                         </button>
                       );
                     })}
@@ -457,7 +464,7 @@ function BookingFlow({
           </div>
           <div className="space-y-1">
             <p className="text-base font-medium text-[--foreground]">Your details</p>
-            <p className="text-sm text-[--muted-foreground]">{duration} min · {formatDate(selectedSlot.start, page.timezone)} {formatTime(selectedSlot.start, page.timezone)}</p>
+            <p className="text-sm text-[--muted-foreground]">{duration} min · {formatDate(selectedSlot.start)} {formatTime(selectedSlot.start)}</p>
           </div>
 
           <div className="space-y-3">

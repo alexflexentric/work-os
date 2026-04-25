@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
-import { sendApprovalPendingEmail } from "@/lib/email";
+import { sendApprovalPendingEmail, sendAdminApprovalNotification } from "@/lib/email";
 
 // Static auth() export — reads sessions from DB, no provider config needed.
 // Used throughout the app for session checks.
@@ -70,7 +70,10 @@ export async function buildAuthHandlers() {
     events: {
       async createUser({ user }) {
         if (user.email) {
-          await sendApprovalPendingEmail(user.email, user.name ?? undefined);
+          await Promise.all([
+            sendApprovalPendingEmail(user.email, user.name ?? undefined),
+            sendAdminApprovalNotification(user.email, user.name ?? undefined),
+          ]);
         }
       },
     },

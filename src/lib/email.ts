@@ -1,9 +1,11 @@
 import { Resend } from "resend";
 import ApprovalPendingEmail from "@/emails/ApprovalPending";
 import WelcomeEmail from "@/emails/Welcome";
+import AdminApprovalNotificationEmail from "@/emails/AdminApprovalNotification";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const FROM = "Work OS <support@fafo-studio.com>";
+const ADMIN_EMAIL = "alex@fafo-studio.com";
 
 export async function sendApprovalPendingEmail(email: string, name?: string) {
   await resend.emails.send({
@@ -11,6 +13,16 @@ export async function sendApprovalPendingEmail(email: string, name?: string) {
     to: [email],
     subject: "Work OS — your account is pending approval",
     react: ApprovalPendingEmail({ name }),
+  });
+}
+
+export async function sendAdminApprovalNotification(email: string, name?: string) {
+  const adminUrl = `${process.env.NEXTAUTH_URL ?? "https://work-os.fafo-studio.com"}/admin`;
+  await resend.emails.send({
+    from: FROM,
+    to: [ADMIN_EMAIL],
+    subject: `Work OS — ${name ?? email} is waiting for approval`,
+    react: AdminApprovalNotificationEmail({ name, email, adminUrl }),
   });
 }
 

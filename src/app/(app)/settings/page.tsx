@@ -783,7 +783,7 @@ function CalendarPanel({
               min={0}
               max={23}
               value={settings.calendarStartHour ?? "0"}
-              onChange={(e) => setSettings((prev) => ({ ...prev, calendarStartHour: e.target.value }))}
+              onChange={(e) => setSettings((prev) => ({ ...prev, calendarStartHour: parseInt(e.target.value) || 0 }))}
               className={inputCls + " w-20 text-center"}
             />
             <span className="text-xs text-[--muted-foreground]">to</span>
@@ -792,7 +792,7 @@ function CalendarPanel({
               min={1}
               max={24}
               value={settings.calendarEndHour ?? "24"}
-              onChange={(e) => setSettings((prev) => ({ ...prev, calendarEndHour: e.target.value }))}
+              onChange={(e) => setSettings((prev) => ({ ...prev, calendarEndHour: parseInt(e.target.value) || 24 }))}
               className={inputCls + " w-20 text-center"}
             />
             <span className="text-xs text-[--muted-foreground]">e.g. 7 to 22</span>

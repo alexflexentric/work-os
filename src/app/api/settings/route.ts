@@ -26,6 +26,9 @@ export async function POST(req: Request) {
     Object.entries(body).filter(([k]) => allowed.includes(k))
   );
 
+  if (data.calendarStartHour !== undefined) data.calendarStartHour = parseInt(String(data.calendarStartHour)) || 0;
+  if (data.calendarEndHour !== undefined) data.calendarEndHour = parseInt(String(data.calendarEndHour)) || 24;
+
   const settings = await prisma.userSettings.upsert({
     where: { userId: session.userId },
     update: data,

@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Languages, Settings } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { Languages, Settings, LogOut } from "lucide-react";
 
 const links = [
   { href: "/translation", label: "Translation", icon: Languages },
@@ -49,6 +50,17 @@ export default function Nav() {
           );
         })}
       </nav>
+
+      {/* Sign out */}
+      <div className="py-4 px-2 border-t border-[--border]">
+        <button
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        >
+          <LogOut size={15} strokeWidth={1.75} />
+          Sign out
+        </button>
+      </div>
     </aside>
   );
 }

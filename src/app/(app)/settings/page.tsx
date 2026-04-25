@@ -653,11 +653,13 @@ function CalendarPanel({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
+    const saved = await res.json();
+    setSettings((prev) => ({ ...prev, ...saved }));
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

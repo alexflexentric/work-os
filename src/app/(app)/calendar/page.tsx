@@ -115,8 +115,8 @@ export default function CalendarPage() {
   const weekEnd = weekDays[6];
   const todayStr = localDate(new Date());
 
-  const startHour = Math.max(0, Math.min(23, settings.calendarStartHour ?? 0));
-  const endHour = Math.max(startHour + 1, Math.min(24, settings.calendarEndHour ?? 24));
+  const startHour = Math.max(0, Math.min(23, Number(settings.calendarStartHour) || 0));
+  const endHour = Math.max(startHour + 1, Math.min(24, Number(settings.calendarEndHour) || 24));
   const visibleHours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
 
   // Color map: source id → hex

@@ -84,8 +84,6 @@ export default function SetupPage() {
     if (ok) setStep("done");
   }
 
-  const inputCls = "w-full border border-[--border] rounded-lg px-3 py-2 text-sm bg-[--card] text-[--foreground] font-mono";
-
   return (
     <main className="min-h-screen flex items-center justify-center bg-[--background] px-4">
       <div className="w-full max-w-lg border border-[--border] rounded-xl p-10 bg-[--card] space-y-8">

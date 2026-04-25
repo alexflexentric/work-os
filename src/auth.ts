@@ -48,7 +48,7 @@ export async function buildAuthHandlers() {
       MicrosoftEntraID({
         clientId: config.microsoftClientId,
         clientSecret: config.microsoftClientSecret,
-        tenantId: config.microsoftTenantId ?? "common",
+        issuer: `https://login.microsoftonline.com/${config.microsoftTenantId ?? "common"}/v2.0`,
         authorization: {
           params: {
             scope: "openid email profile offline_access Calendars.ReadWrite",

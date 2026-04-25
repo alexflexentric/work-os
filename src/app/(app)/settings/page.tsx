@@ -378,20 +378,23 @@ function parseSettingsFile(text: string): {
   apiKeys: Record<string, string>;
   formats: { name: string; instructions: string }[];
   tones: { name: string; instructions: string }[];
+  icalConnections: { name: string; url: string }[];
 } {
   const lines = text.split("\n");
-  let section: "none" | "api-keys" | "formats" | "tones" = "none";
+  let section: "none" | "api-keys" | "formats" | "tones" | "ical" = "none";
   let currentName = "";
   let currentLines: string[] = [];
   const apiKeys: Record<string, string> = {};
   const formats: { name: string; instructions: string }[] = [];
   const tones: { name: string; instructions: string }[] = [];
+  const icalConnections: { name: string; url: string }[] = [];
 
   function flush() {
     if (!currentName) return;
-    const instructions = currentLines.join("\n").trim();
-    if (section === "formats" && instructions) formats.push({ name: currentName, instructions });
-    if (section === "tones" && instructions) tones.push({ name: currentName, instructions });
+    const body = currentLines.join("\n").trim();
+    if (section === "formats" && body) formats.push({ name: currentName, instructions: body });
+    if (section === "tones" && body) tones.push({ name: currentName, instructions: body });
+    if (section === "ical" && body) icalConnections.push({ name: currentName, url: body });
     currentName = "";
     currentLines = [];
   }
@@ -400,9 +403,10 @@ function parseSettingsFile(text: string): {
     if (line.startsWith("## API Keys")) { flush(); section = "api-keys"; continue; }
     if (line.startsWith("## Formats")) { flush(); section = "formats"; continue; }
     if (line.startsWith("## Tones")) { flush(); section = "tones"; continue; }
+    if (line.startsWith("## iCal Connections")) { flush(); section = "ical"; continue; }
     if (line.startsWith("## ")) { flush(); section = "none"; continue; }
 
-    if (line.startsWith("### ") && (section === "formats" || section === "tones")) {
+    if (line.startsWith("### ") && (section === "formats" || section === "tones" || section === "ical")) {
       flush();
       currentName = line.slice(4).trim();
       continue;
@@ -422,7 +426,7 @@ function parseSettingsFile(text: string): {
   }
   flush();
 
-  return { apiKeys, formats, tones };
+  return { apiKeys, formats, tones, icalConnections };
 }
 
 function ImportExportPanel({ inputCls }: { inputCls: string }) {
@@ -434,10 +438,11 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
   async function handleExport() {
     setExporting(true);
     try {
-      const [settingsData, formatsData, tonesData] = await Promise.all([
+      const [settingsData, formatsData, tonesData, connectionsData] = await Promise.all([
         fetch("/api/settings").then((r) => r.json()),
         fetch("/api/formats").then((r) => r.json()),
         fetch("/api/tones").then((r) => r.json()),
+        fetch("/api/calendar/connections").then((r) => r.json()),
       ]);
 
       const lines: string[] = [
@@ -459,6 +464,11 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
       lines.push("## Tones", "");
       for (const t of (tonesData as Item[])) {
         lines.push(`### ${t.name}`, t.instructions, "");
+      }
+
+      lines.push("## iCal Connections", "");
+      for (const c of (connectionsData as Connection[])) {
+        if (c.icalUrl) lines.push(`### ${c.sourceCalendarName}`, c.icalUrl, "");
       }
 
       const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
@@ -483,7 +493,7 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
     setImportResult(null);
     try {
       const text = await file.text();
-      const { apiKeys, formats, tones } = parseSettingsFile(text);
+      const { apiKeys, formats, tones, icalConnections } = parseSettingsFile(text);
 
       if (Object.keys(apiKeys).length > 0) {
         await fetch("/api/settings", {
@@ -493,15 +503,18 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
         });
       }
 
-      const [existingFormats, existingTones] = await Promise.all([
+      const [existingFormats, existingTones, existingConnections] = await Promise.all([
         fetch("/api/formats").then((r) => r.json()),
         fetch("/api/tones").then((r) => r.json()),
+        fetch("/api/calendar/connections").then((r) => r.json()),
       ]);
 
       const existingFormatNames = new Set((existingFormats as Item[]).map((f) => f.name.toLowerCase()));
       const existingToneNames = new Set((existingTones as Item[]).map((t) => t.name.toLowerCase()));
+      const existingUrls = new Set((existingConnections as Connection[]).map((c) => c.icalUrl?.toLowerCase()));
       const newFormats = formats.filter((f) => !existingFormatNames.has(f.name.toLowerCase()));
       const newTones = tones.filter((t) => !existingToneNames.has(t.name.toLowerCase()));
+      const newConnections = icalConnections.filter((c) => !existingUrls.has(c.url.toLowerCase()));
 
       for (const f of newFormats) {
         await fetch("/api/formats", {
@@ -517,11 +530,19 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
           body: JSON.stringify(t),
         });
       }
+      for (const c of newConnections) {
+        await fetch("/api/calendar/connections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: c.name, url: c.url }),
+        });
+      }
 
       const parts: string[] = [];
       if (Object.keys(apiKeys).length > 0) parts.push(`${Object.keys(apiKeys).length} API key(s)`);
       if (newFormats.length > 0) parts.push(`${newFormats.length} format(s)`);
       if (newTones.length > 0) parts.push(`${newTones.length} tone(s)`);
+      if (newConnections.length > 0) parts.push(`${newConnections.length} iCal connection(s)`);
 
       if (parts.length > 0) {
         window.location.reload();
@@ -540,7 +561,7 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
       <div className="space-y-3">
         <p className="text-xs font-medium text-[--muted-foreground]">Export</p>
         <p className="text-xs text-[--muted-foreground]">
-          Downloads a Markdown file with your API keys, formats, and tones. Keep it safe — it contains your API keys in plain text.
+          Downloads a Markdown file with your API keys, formats, tones, and iCal connections. Keep it safe — it contains your API keys in plain text.
         </p>
         <button
           onClick={handleExport}

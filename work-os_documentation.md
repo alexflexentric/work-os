@@ -33,7 +33,7 @@ Each user brings their own API keys (Anthropic, OpenAI). OAuth app credentials (
 - **Middleware edge redirect**: Authenticated users (session cookie present) hitting `/` are redirected to `/home` at the edge — the server-rendered sign-in page is never reached for logged-in users.
 - **Per-user API keys**: Users pay their own LLM/Whisper bills. Keys stored in `UserSettings`.
 - **Admin approval gate**: `User.isApproved` flag; unapproved users are redirected to `/approval-pending`. Approval triggers a Welcome email via Resend.
-- **Worker service**: `sync-worker.ts` exists (node-cron) but is **not running on Railway**. Instead, `POST /api/calendar/sync` accepts `Authorization: Bearer <CRON_SECRET>` and syncs all approved users — call it from a Railway Cron service every 15 min. On-demand sync still works from the Calendar page Refresh button.
+- **Background sync via Railway Cron**: `sync-worker.ts` exists (node-cron) but is not running on Railway. A dedicated `calendar-sync-cron` Railway Cron service (source image: `curlimages/curl`, schedule `*/15 * * * *`) calls `POST /api/calendar/sync` with `Authorization: Bearer <CRON_SECRET>`. `CRON_SECRET` must be set in both the web service and the cron service env vars. On-demand sync still works from the Calendar page Refresh button.
 - **Calendar event cache**: `CalendarEvent` table stores all events per user from master calendar + iCal feeds. The Calendar view reads from this table; `POST /api/calendar/sync` populates it.
 - **PWA**: Custom `manifest.json` + `sw.js` with cache-first static, network-first API strategy.
 
@@ -265,6 +265,7 @@ Sender: `Work OS <work-os@flexentric.com>`
 
 - Build command (via `package.json`): `prisma generate && next build`
 - Start command (via `railway.json`): `prisma migrate deploy && npm start`
-- One service: `web` (Next.js) — no worker service deployed
+- Services: `web` (Next.js) + `calendar-sync-cron` (curlimages/curl, schedule `*/15 * * * *`)
 - Custom domain: `work-os.flexentric.com`
+- `CRON_SECRET` must be set in both service env vars; cron start command: `curl -s -X POST https://work-os.flexentric.com/api/calendar/sync -H "Authorization: Bearer $CRON_SECRET"`
 - Local dev DB: `.env` points to Railway public proxy (`shinkansen.proxy.rlwy.net:12393`) — `npx prisma migrate dev` and `npx prisma studio` work without any prefix

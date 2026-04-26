@@ -1,8 +1,6 @@
-const CACHE = "work-os-v1";
-const STATIC = ["/", "/translation", "/settings", "/manifest.json"];
+const CACHE = "work-os-v2";
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(STATIC)));
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -20,16 +18,34 @@ self.addEventListener("fetch", (e) => {
 
   // Network-first for API routes
   if (url.pathname.startsWith("/api/")) {
-    e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify({ error: "Offline" }), { headers: { "Content-Type": "application/json" } })));
+    e.respondWith(
+      fetch(e.request).catch(() =>
+        new Response(JSON.stringify({ error: "Offline" }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
     return;
   }
 
-  // Cache-first for everything else
+  // Cache-first for Next.js static assets — safe because they are content-hashed
+  if (url.pathname.startsWith("/_next/static/")) {
+    e.respondWith(
+      caches.match(e.request).then(
+        (cached) =>
+          cached ??
+          fetch(e.request).then((res) => {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, clone));
+            return res;
+          })
+      )
+    );
+    return;
+  }
+
+  // Network-first for HTML pages so nav/layout is always fresh after a deploy
   e.respondWith(
-    caches.match(e.request).then((cached) => cached ?? fetch(e.request).then((res) => {
-      const clone = res.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, clone));
-      return res;
-    }))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });

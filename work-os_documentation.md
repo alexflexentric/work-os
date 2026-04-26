@@ -30,6 +30,7 @@ Each user brings their own API keys (Anthropic, OpenAI). OAuth app credentials (
 - **Setup wizard**: On first launch, if no OAuth credentials exist in `AppConfig`, all routes redirect to `/setup`. The wizard collects Google and/or Microsoft app credentials with in-UI instructions. Once saved, `/setup` is locked to the admin only.
 - **Dynamic NextAuth providers**: NextAuth reads OAuth credentials from `AppConfig` at request time, not from env vars. Supports Google, Microsoft, or both simultaneously depending on what is configured.
 - **Master calendar = sign-in provider**: The OAuth provider used at sign-up (Google or Microsoft) is automatically the master calendar. No separate calendar OAuth step.
+- **Middleware edge redirect**: Authenticated users (session cookie present) hitting `/` are redirected to `/home` at the edge — the server-rendered sign-in page is never reached for logged-in users.
 - **Per-user API keys**: Users pay their own LLM/Whisper bills. Keys stored in `UserSettings`.
 - **Admin approval gate**: `User.isApproved` flag; unapproved users are redirected to `/approval-pending`. Approval triggers a Welcome email via Resend.
 - **Worker service**: `sync-worker.ts` exists (node-cron) but is **not running on Railway** — only one `web` service is deployed. Sync currently happens on-demand when the user opens the Calendar page or clicks Refresh.

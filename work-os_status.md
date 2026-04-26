@@ -1,10 +1,18 @@
 # Work OS - Status
 
-**Last updated**: 2026-04-25
+**Last updated**: 2026-04-26
 
 ---
 
 ## Just Completed
+
+**Root redirect + nav stability** (2026-04-26)
+
+- `middleware.ts` — authenticated users hitting `/` are now redirected to `/home` at the edge (session cookie check), so the server-rendered sign-in page is never reached when logged in
+- `settings/page.tsx` — replaced `window.location.reload()` after import with `router.refresh()`; hard reload was briefly routing through `/`, causing the nav to disappear before the session was re-confirmed by the layout
+- `Nav.tsx` — applied `pathname?.startsWith()` optional chaining on mobile tab bar (matched desktop sidebar behavior)
+
+---
 
 **Booking UI polish** (2026-04-25)
 

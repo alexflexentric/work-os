@@ -49,7 +49,6 @@ const CHEVRON_STYLE = {
 };
 
 export default function SettingsPage() {
-  const router = useRouter();
   const { data: session } = useSession();
   const [section, setSection] = useState<Section>("api-keys");
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -446,6 +445,7 @@ function parseSettingsFile(text: string): {
 }
 
 function ImportExportPanel({ inputCls }: { inputCls: string }) {
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ ok: boolean; message: string } | null>(null);

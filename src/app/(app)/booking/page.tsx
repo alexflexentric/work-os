@@ -10,6 +10,13 @@ type BookingPageData = {
   slug: string;
   durations: number[];
   timezone: string;
+  calendarSources: string[];
+};
+
+type CalendarSourceDisplay = {
+  id: string;
+  name: string;
+  color: string;
 };
 
 type Slot = { start: string; end: string };
@@ -27,9 +34,6 @@ type ConfirmedBooking = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// localIso is already the wall-clock time in the booking page timezone (e.g. "2026-04-28T15:00:00").
-// Construct a UTC Date with the same numeric values so we can format with timeZone:"UTC"
-// and get the correct display — avoids the +offset shift from "Z" or local-browser interpretation.
 function wallClockToUtcDate(localIso: string): Date {
   const [datePart, timePart = "00:00:00"] = localIso.split("T");
   const [y, m, d] = datePart.split("-").map(Number);
@@ -63,24 +67,55 @@ export default function BookingPage() {
   const [pages, setPages] = useState<BookingPageData[]>([]);
   const [selectedPage, setSelectedPage] = useState<BookingPageData | null>(null);
   const [loadingPages, setLoadingPages] = useState(true);
-  const [view, setView] = useState<"book" | "list">("book");
-
-  useEffect(() => {
-    fetch("/api/booking-pages")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0) {
-          setPages(d);
-          setSelectedPage(d[0]);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingPages(false));
-  }, []);
+  const [view, setView] = useState<"pages" | "bookings">("pages");
 
   const inputCls =
     "w-full border border-[--border] rounded-lg px-3 py-2 text-sm bg-[--card] text-[--foreground] placeholder:text-[--muted-foreground] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--ring]";
 
+  useEffect(() => {
+    fetch("/api/booking-pages")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setPages(d); })
+      .catch(() => {})
+      .finally(() => setLoadingPages(false));
+  }, []);
+
+  // Booking flow detail view
+  if (selectedPage) {
+    return (
+      <div className="max-w-2xl space-y-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSelectedPage(null)}
+            className="flex items-center gap-1.5 text-sm text-[--muted-foreground] hover:text-[--foreground] transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Booking pages
+          </button>
+        </div>
+        <div className="space-y-1">
+          <h1
+            className="text-3xl font-normal text-[--foreground]"
+            style={{ fontFamily: "'Charter', 'Georgia', serif" }}
+          >
+            {selectedPage.name}
+          </h1>
+          <CalendarLegend calendarSources={selectedPage.calendarSources} />
+        </div>
+        <BookingFlow
+          key={selectedPage.id}
+          page={selectedPage}
+          defaultName={session?.user?.name ?? ""}
+          defaultEmail={session?.user?.email ?? ""}
+          inputCls={inputCls}
+        />
+      </div>
+    );
+  }
+
+  // Top-level: list of booking pages + bookings tab
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
@@ -92,21 +127,21 @@ export default function BookingPage() {
         </h1>
         <div className="flex gap-1 border border-[--border] rounded-lg p-0.5">
           <button
-            onClick={() => setView("book")}
-            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === "book" ? "bg-[--foreground] text-[--background]" : "text-[--muted-foreground] hover:text-[--foreground]"}`}
+            onClick={() => setView("pages")}
+            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === "pages" ? "bg-[--foreground] text-[--background]" : "text-[--muted-foreground] hover:text-[--foreground]"}`}
           >
-            Book
+            Pages
           </button>
           <button
-            onClick={() => setView("list")}
-            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === "list" ? "bg-[--foreground] text-[--background]" : "text-[--muted-foreground] hover:text-[--foreground]"}`}
+            onClick={() => setView("bookings")}
+            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === "bookings" ? "bg-[--foreground] text-[--background]" : "text-[--muted-foreground] hover:text-[--foreground]"}`}
           >
             Bookings
           </button>
         </div>
       </div>
 
-      {view === "book" ? (
+      {view === "pages" ? (
         loadingPages ? (
           <p className="text-sm text-[--muted-foreground]">Loading…</p>
         ) : pages.length === 0 ? (
@@ -114,34 +149,101 @@ export default function BookingPage() {
             No booking pages yet. Create one in Settings → Booking pages.
           </p>
         ) : (
-          <div className="space-y-4">
-            {pages.length > 1 && (
-              <div className="flex gap-1.5 flex-wrap">
-                {pages.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPage(p)}
-                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${selectedPage?.id === p.id ? "bg-[--foreground] text-[--background] border-[--foreground]" : "border-[--border] text-[--muted-foreground] hover:text-[--foreground]"}`}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {selectedPage && (
-              <BookingFlow
-                key={selectedPage.id}
-                page={selectedPage}
-                defaultName={session?.user?.name ?? ""}
-                defaultEmail={session?.user?.email ?? ""}
-                inputCls={inputCls}
-              />
-            )}
-          </div>
+          <ul className="space-y-px border border-[--border] rounded-xl overflow-hidden">
+            {pages.map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => setSelectedPage(p)}
+                  className="w-full text-left bg-[--card] hover:bg-[--muted] transition-colors px-5 py-4 border-b border-[--border] last:border-0 group"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1.5 min-w-0">
+                      <p className="text-sm font-medium text-[--foreground]">{p.name}</p>
+                      <p className="text-xs text-[--muted-foreground]">
+                        {p.durations.join(", ")} min · {p.timezone}
+                      </p>
+                      <CalendarLegend calendarSources={p.calendarSources} small />
+                    </div>
+                    <svg
+                      width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2"
+                      className="text-[--muted-foreground] group-hover:text-[--foreground] shrink-0 transition-colors"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
         )
       ) : (
         <BookingsList />
       )}
+    </div>
+  );
+}
+
+// ─── Calendar legend ──────────────────────────────────────────────────────────
+
+function CalendarLegend({
+  calendarSources,
+  small,
+}: {
+  calendarSources: string[];
+  small?: boolean;
+}) {
+  const [sources, setSources] = useState<CalendarSourceDisplay[]>([]);
+
+  useEffect(() => {
+    if (calendarSources.length === 0) return;
+    Promise.all([
+      fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/calendar/connections").then((r) => r.json()),
+    ])
+      .then(([settings, connections]) => {
+        const items: CalendarSourceDisplay[] = [];
+        for (const sourceId of calendarSources) {
+          if (sourceId === "master") {
+            items.push({
+              id: "master",
+              name: "Master calendar",
+              color: settings.masterCalendarColor ?? "#007AFF",
+            });
+          } else {
+            const conn = Array.isArray(connections)
+              ? connections.find((c: { id: string }) => c.id === sourceId)
+              : null;
+            if (conn) {
+              items.push({ id: conn.id, name: conn.name, color: conn.color ?? "#888888" });
+            }
+          }
+        }
+        setSources(items);
+      })
+      .catch(() => {});
+  }, [calendarSources]);
+
+  if (sources.length === 0) return null;
+
+  return (
+    <div className={`flex items-center gap-3 flex-wrap ${small ? "mt-0.5" : ""}`}>
+      {sources.map((s) => (
+        <span
+          key={s.id}
+          className={`flex items-center gap-1.5 ${small ? "text-xs text-[--muted-foreground]" : "text-sm text-[--muted-foreground]"}`}
+        >
+          <span
+            className="rounded-full shrink-0"
+            style={{
+              backgroundColor: s.color,
+              width: small ? 8 : 10,
+              height: small ? 8 : 10,
+            }}
+          />
+          {s.name}
+        </span>
+      ))}
     </div>
   );
 }
@@ -242,7 +344,6 @@ function BookingFlow({
     }
   }
 
-  // Group slots by date
   const slotsByDate = slots.reduce<Record<string, Slot[]>>((acc, s) => {
     const key = slotDateKey(s.start);
     if (!acc[key]) acc[key] = [];
@@ -251,7 +352,6 @@ function BookingFlow({
   }, {});
   const availableDates = Object.keys(slotsByDate).sort();
 
-  // Step indicator
   const steps: { id: Step; label: string }[] = [
     { id: "duration", label: "Duration" },
     { id: "datetime", label: "Date & Time" },
@@ -393,7 +493,6 @@ function BookingFlow({
             <p className="text-sm text-[--muted-foreground]">No available slots in the next 30 days.</p>
           ) : (
             <div className="space-y-4">
-              {/* Day pills */}
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                 {availableDates.map((dateKey) => {
                   const sample = slotsByDate[dateKey][0];
@@ -418,7 +517,6 @@ function BookingFlow({
                 })}
               </div>
 
-              {/* Time slots */}
               {selectedDate && (
                 <div className="space-y-2">
                   <p className="text-xs text-[--muted-foreground]">Times shown in {page.timezone}</p>

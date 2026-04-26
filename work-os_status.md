@@ -6,6 +6,14 @@
 
 ## Just Completed
 
+**Fix overbooking: CalendarEvent cache in availability check** (2026-04-26)
+
+- All four booking routes (availability GET + bookings POST, both authenticated and public) now query `CalendarEvent` for **all** `calendarSources` (master + iCal) in addition to the live MS Graph call
+- Previously: master calendar → live MS Graph only (silently returns `[]` on any API error); iCal → CalendarEvent cache. Events visible in the calendar view but missed by the live Graph call were not blocking slots.
+- Fix: `cachedBusy` pulls from `CalendarEvent` for all configured sources; merged with `masterBusy` (live) and `bookingBusy`. Whatever is visible in the calendar view now also blocks booking slots.
+
+---
+
 **Root redirect + nav stability** (2026-04-26)
 
 - `middleware.ts` — authenticated users hitting `/` are now redirected to `/home` at the edge (session cookie check), so the server-rendered sign-in page is never reached when logged in

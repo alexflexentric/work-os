@@ -176,6 +176,11 @@ A Calendly-style booking system. External users book meetings via a Lovable-buil
 2. Work OS re-validates the slot is free, creates an Outlook calendar event with Teams join URL
 3. Outlook auto-sends calendar invite to guest; Resend sends confirmation email (with Teams link) to guest and notification email to Alex
 
+**Busy-interval sources** (availability GET and bookings POST re-validation):
+- Live MS Graph call for master calendar (fresh data)
+- `CalendarEvent` cache for **all** `calendarSources` (master + iCal) — ensures whatever is visible in the calendar view also blocks booking slots
+- Existing `Booking` records for this booking page
+
 **Lovable → Work OS migration** (minimal changes):
 - Change base URL to `work-os.flexentric.com`
 - Add `?slug=ap` to availability GET call

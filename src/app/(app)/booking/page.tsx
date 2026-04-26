@@ -659,6 +659,10 @@ function BookingsList() {
       .finally(() => setLoading(false));
   }, []);
 
+  function handleDelete(id: string) {
+    setBookings((prev) => prev.filter((b) => b.id !== id));
+  }
+
   if (loading) return <p className="text-sm text-[--muted-foreground]">Loading…</p>;
   if (bookings.length === 0) return <p className="text-sm text-[--muted-foreground]">No bookings yet.</p>;
 
@@ -671,20 +675,30 @@ function BookingsList() {
       {upcoming.length > 0 && (
         <section className="space-y-3">
           <p className="text-xs font-medium text-[--muted-foreground]">Upcoming</p>
-          <BookingList bookings={upcoming} />
+          <BookingList bookings={upcoming} onDelete={handleDelete} />
         </section>
       )}
       {past.length > 0 && (
         <section className="space-y-3">
           <p className="text-xs font-medium text-[--muted-foreground]">Past</p>
-          <BookingList bookings={past} muted />
+          <BookingList bookings={past} onDelete={handleDelete} muted />
         </section>
       )}
     </div>
   );
 }
 
-function BookingList({ bookings, muted }: { bookings: Booking[]; muted?: boolean }) {
+function BookingList({ bookings, onDelete, muted }: { bookings: Booking[]; onDelete: (id: string) => void; muted?: boolean }) {
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this booking?")) return;
+    setDeleting(id);
+    await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+    onDelete(id);
+    setDeleting(null);
+  }
+
   return (
     <ul className="space-y-px border border-[--border] rounded-lg overflow-hidden">
       {bookings.map((b) => {
@@ -704,12 +718,20 @@ function BookingList({ bookings, muted }: { bookings: Booking[]; muted?: boolean
                 </p>
                 {b.note && <p className="text-xs text-[--muted-foreground] mt-1 italic">{b.note}</p>}
               </div>
-              {b.teamsLink && (
-                <a href={b.teamsLink} target="_blank" rel="noopener noreferrer"
-                  className="shrink-0 px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors">
-                  Teams link
-                </a>
-              )}
+              <div className="shrink-0 flex items-center gap-2">
+                {b.teamsLink && (
+                  <a href={b.teamsLink} target="_blank" rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-[--foreground] transition-colors">
+                    Teams link
+                  </a>
+                )}
+                <button
+                  onClick={() => handleDelete(b.id)}
+                  disabled={deleting === b.id}
+                  className="px-2.5 py-1 rounded-md text-xs border border-[--border] text-[--muted-foreground] hover:text-red-500 hover:border-red-300 transition-colors disabled:opacity-40">
+                  {deleting === b.id ? "…" : "Delete"}
+                </button>
+              </div>
             </div>
           </li>
         );

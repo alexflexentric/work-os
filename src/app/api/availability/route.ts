@@ -42,20 +42,22 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const windowEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
+  // Live MS Graph / Google call for the master calendar (fresh data)
   const masterBusy = calendarSources.includes("master")
     ? await getBusyIntervals(userId, now.toISOString(), windowEnd.toISOString()).catch(() => [] as BusyInterval[])
     : [];
 
-  const icalSourceIds = calendarSources.filter((s) => s !== "master");
-  const icalBusy: BusyInterval[] =
-    icalSourceIds.length > 0
-      ? (
-          await prisma.calendarEvent.findMany({
-            where: { userId, source: { in: icalSourceIds }, startAt: { lt: windowEnd }, endAt: { gt: now } },
-            select: { startAt: true, endAt: true },
-          })
-        ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
-      : [];
+  // CalendarEvent cache for all configured sources (master + iCal).
+  // Ensures whatever is visible in the calendar view also blocks slots —
+  // catches cases where the live MS Graph call silently fails or misses an instance.
+  const cachedBusy: BusyInterval[] = calendarSources.length > 0
+    ? (
+        await prisma.calendarEvent.findMany({
+          where: { userId, source: { in: calendarSources }, startAt: { lt: windowEnd }, endAt: { gt: now } },
+          select: { startAt: true, endAt: true },
+        })
+      ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
+    : [];
 
   const bookingBusy: BusyInterval[] = (
     await prisma.booking.findMany({
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
     })
   ).map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() }));
 
-  const busy = mergeBusyIntervals([...masterBusy, ...icalBusy, ...bookingBusy]);
+  const busy = mergeBusyIntervals([...masterBusy, ...cachedBusy, ...bookingBusy]);
   const durationMs = duration * 60 * 1000;
   const slots: Array<{ start: string; end: string }> = [];
 

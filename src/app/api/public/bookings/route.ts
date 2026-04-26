@@ -65,31 +65,28 @@ export async function POST(req: NextRequest) {
   const endMs = new Date(endUtc).getTime();
 
   // Re-validate the slot is still free
+  const startDate = new Date(startUtc);
+  const endDate = new Date(endUtc);
+
   const masterBusy = calendarSources.includes("master")
     ? await getBusyIntervals(userId, startUtc, endUtc).catch(() => [] as BusyInterval[])
     : [];
+  const cachedBusy: BusyInterval[] = calendarSources.length > 0
+    ? (
+        await prisma.calendarEvent.findMany({
+          where: { userId, source: { in: calendarSources }, startAt: { lt: endDate }, endAt: { gt: startDate } },
+          select: { startAt: true, endAt: true },
+        })
+      ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
+    : [];
+  const bookingBusy: BusyInterval[] = (
+    await prisma.booking.findMany({
+      where: { bookingPageId: bookingPage.id, status: { not: "declined" }, startAt: { lt: endDate }, endAt: { gt: startDate } },
+      select: { startAt: true, endAt: true },
+    })
+  ).map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() }));
 
-  const icalSourceIds = calendarSources.filter((s) => s !== "master");
-  const icalBusy: BusyInterval[] =
-    icalSourceIds.length > 0
-      ? (
-          await prisma.calendarEvent.findMany({
-            where: { userId, source: { in: icalSourceIds }, startAt: { lt: new Date(endUtc) }, endAt: { gt: new Date(startUtc) } },
-            select: { startAt: true, endAt: true },
-          })
-        ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
-      : [];
-
-  const existingBookings = await prisma.booking.findMany({
-    where: { bookingPageId: bookingPage.id, status: { not: "declined" }, startAt: { lt: new Date(endUtc) }, endAt: { gt: new Date(startUtc) } },
-    select: { startAt: true, endAt: true },
-  });
-  const bookingBusy: BusyInterval[] = existingBookings.map((b) => ({
-    start: b.startAt.getTime(),
-    end: b.endAt.getTime(),
-  }));
-
-  const busy = mergeBusyIntervals([...masterBusy, ...icalBusy, ...bookingBusy]);
+  const busy = mergeBusyIntervals([...masterBusy, ...cachedBusy, ...bookingBusy]);
   const conflict = busy.find((b) => startMs < b.end && endMs > b.start);
   if (conflict) {
     return NextResponse.json({ error: "slot_taken" }, { status: 409, headers: corsHeaders() });

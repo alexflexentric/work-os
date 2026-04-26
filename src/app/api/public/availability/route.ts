@@ -61,44 +61,32 @@ export async function GET(req: NextRequest) {
     const timeMin = now.toISOString();
     const timeMax = windowEnd.toISOString();
 
-    // Busy from master calendar (MS Graph or Google)
+    // Live MS Graph / Google call for the master calendar (fresh data)
     const masterBusy = calendarSources.includes("master")
       ? await getBusyIntervals(userId, timeMin, timeMax).catch(() => [] as BusyInterval[])
       : [];
 
-    // Busy from iCal connections (from CalendarEvent cache)
-    const icalSourceIds = calendarSources.filter((s) => s !== "master");
-    const icalBusy: BusyInterval[] =
-      icalSourceIds.length > 0
-        ? (
-            await prisma.calendarEvent.findMany({
-              where: {
-                userId,
-                source: { in: icalSourceIds },
-                startAt: { lt: windowEnd },
-                endAt: { gt: now },
-              },
-              select: { startAt: true, endAt: true },
-            })
-          ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
-        : [];
+    // CalendarEvent cache for all configured sources (master + iCal).
+    // Ensures whatever is visible in the calendar view also blocks slots —
+    // catches cases where the live MS Graph call silently fails or misses an instance.
+    const cachedBusy: BusyInterval[] = calendarSources.length > 0
+      ? (
+          await prisma.calendarEvent.findMany({
+            where: { userId, source: { in: calendarSources }, startAt: { lt: windowEnd }, endAt: { gt: now } },
+            select: { startAt: true, endAt: true },
+          })
+        ).map((e) => ({ start: e.startAt.getTime(), end: e.endAt.getTime() }))
+      : [];
 
     // Busy from existing bookings for this booking page
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        bookingPageId: bookingPage.id,
-        status: { not: "declined" },
-        startAt: { lt: windowEnd },
-        endAt: { gt: now },
-      },
-      select: { startAt: true, endAt: true },
-    });
-    const bookingBusy: BusyInterval[] = existingBookings.map((b) => ({
-      start: b.startAt.getTime(),
-      end: b.endAt.getTime(),
-    }));
+    const bookingBusy: BusyInterval[] = (
+      await prisma.booking.findMany({
+        where: { bookingPageId: bookingPage.id, status: { not: "declined" }, startAt: { lt: windowEnd }, endAt: { gt: now } },
+        select: { startAt: true, endAt: true },
+      })
+    ).map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() }));
 
-    const busy = mergeBusyIntervals([...masterBusy, ...icalBusy, ...bookingBusy]);
+    const busy = mergeBusyIntervals([...masterBusy, ...cachedBusy, ...bookingBusy]);
 
     const durationMs = duration * 60 * 1000;
     const slots: Array<{ start: string; end: string }> = [];

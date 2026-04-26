@@ -135,6 +135,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Immediately write to CalendarEvent cache so the meeting appears in the
+  // calendar view without waiting for the next sync cycle.
+  if (outlookEventId) {
+    await prisma.calendarEvent.upsert({
+      where: { userId_source_externalId: { userId, source: "master", externalId: outlookEventId } },
+      create: { userId, source: "master", externalId: outlookEventId, title: String(subject), startAt: new Date(startUtc), endAt: new Date(endUtc), allDay: false, location: address ? String(address) : null },
+      update: { title: String(subject), startAt: new Date(startUtc), endAt: new Date(endUtc), allDay: false, location: address ? String(address) : null },
+    }).catch((err) => console.error("[bookings/public] CalendarEvent upsert error:", err));
+  }
+
   // Format date label for emails
   const dateLabel = new Date(startUtc).toLocaleString("en-GB", {
     timeZone: timezone,

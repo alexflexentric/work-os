@@ -111,6 +111,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Immediately write to CalendarEvent cache so the meeting appears in the
+  // calendar view without waiting for the next sync cycle.
+  if (outlookEventId) {
+    await prisma.calendarEvent.upsert({
+      where: { userId_source_externalId: { userId, source: "master", externalId: outlookEventId } },
+      create: { userId, source: "master", externalId: outlookEventId, title: String(subject), startAt: new Date(startUtc), endAt: new Date(endUtc), allDay: false, location: address ? String(address) : null },
+      update: { title: String(subject), startAt: new Date(startUtc), endAt: new Date(endUtc), allDay: false, location: address ? String(address) : null },
+    }).catch((err) => console.error("[bookings/internal] CalendarEvent upsert error:", err));
+  }
+
   const dateLabel = new Date(startUtc).toLocaleString("en-GB", {
     timeZone: timezone, weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
@@ -121,14 +131,14 @@ export async function POST(req: NextRequest) {
     durationMinutes: Number(durationMinutes), location: String(location),
     teamsLink, address: address ? String(address) : null,
     hostName: user?.name ?? "Alex Parkhomchuk",
-  }).catch(() => {});
+  }).catch((err) => console.error("[bookings/internal] Confirmation email error:", err));
 
   sendBookingNotificationEmail({
     guestName: String(guestName), guestEmail: String(guestEmail), guestCompany: String(guestCompany),
     subject: String(subject), dateLabel, durationMinutes: Number(durationMinutes),
     location: String(location), address: address ? String(address) : null,
     note: note ? String(note) : null, bookingPageName: bookingPage.name,
-  }).catch(() => {});
+  }).catch((err) => console.error("[bookings/internal] Notification email error:", err));
 
   return NextResponse.json({ bookingId: booking.id, teamsLink }, { status: 201 });
 }

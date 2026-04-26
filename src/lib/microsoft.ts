@@ -221,7 +221,7 @@ async function graphDelete(token: string, path: string): Promise<void> {
 
 export async function getMicrosoftAccounts(userId: string): Promise<MsAccount[]> {
   return prisma.account.findMany({
-    where: { userId, provider: "microsoft" },
+    where: { userId, provider: { in: ["microsoft-entra-id", "microsoft"] } },
     select: {
       id: true,
       providerAccountId: true,

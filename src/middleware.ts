@@ -17,13 +17,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/") {
-    return NextResponse.next();
-  }
-
   const session =
     req.cookies.get("authjs.session-token") ??
     req.cookies.get("__Secure-authjs.session-token");
+
+  if (pathname === "/") {
+    // Redirect authenticated users to /home so the root page never runs for them
+    if (session) return NextResponse.redirect(new URL("/home", req.url));
+    return NextResponse.next();
+  }
 
   if (!session) {
     return NextResponse.redirect(new URL("/", req.url));

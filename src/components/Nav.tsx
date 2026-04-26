@@ -57,7 +57,7 @@ export default function Nav() {
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[--border] bg-[--background] flex items-center justify-around px-1 pb-safe">
         {links.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== "/home" && pathname.startsWith(href));
+          const active = pathname === href || (href !== "/home" && !!pathname?.startsWith(href));
           return (
             <Link
               key={href}

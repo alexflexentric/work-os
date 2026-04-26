@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 type Section = "api-keys" | "tones" | "formats" | "calendar" | "import-export" | "booking";
@@ -48,6 +49,7 @@ const CHEVRON_STYLE = {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [section, setSection] = useState<Section>("api-keys");
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -559,7 +561,7 @@ function ImportExportPanel({ inputCls }: { inputCls: string }) {
       if (newConnections.length > 0) parts.push(`${newConnections.length} iCal connection(s)`);
 
       if (parts.length > 0) {
-        window.location.reload();
+        router.refresh();
       } else {
         setImportResult({ ok: true, message: "Nothing new to import — all items already exist." });
       }

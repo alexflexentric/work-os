@@ -6,6 +6,14 @@
 
 ## Just Completed
 
+**Calendar sync: Railway Cron support** (2026-04-26)
+
+- `POST /api/calendar/sync` now accepts `Authorization: Bearer <CRON_SECRET>` — when called with the secret it syncs **all approved users** (not just the session user)
+- Sync logic extracted into `syncUser(userId)` helper
+- To activate: (1) set `CRON_SECRET=<random>` in Railway web service env vars; (2) add a Railway Cron service with schedule `*/15 * * * *` and start command: `curl -s -X POST https://work-os.flexentric.com/api/calendar/sync -H "Authorization: Bearer $CRON_SECRET"`
+
+---
+
 **Fix overbooking: CalendarEvent cache in availability check** (2026-04-26)
 
 - All four booking routes (availability GET + bookings POST, both authenticated and public) now query `CalendarEvent` for **all** `calendarSources` (master + iCal) in addition to the live MS Graph call
@@ -156,7 +164,7 @@ All core features live at `work-os.flexentric.com`.
 
 1. **Migrate Lovable frontend** — change base URL to work-os.flexentric.com, add `?slug=ap` to availability call, add `slug: "ap"` to bookings POST body
 2. **Create booking page in Settings** — add the "ap" booking page via Settings → Booking pages; set schedule, durations, timezone
-3. **Railway Cron for calendar sync** — add a Cron service calling `POST https://work-os.flexentric.com/api/calendar/sync` every 15 min
+3. **Railway Cron for calendar sync** — code is ready; just needs `CRON_SECRET` env var + Railway Cron service set up (see docs)
 4. **iCal → Microsoft Calendar sync** — update `sync-engine.ts` to support Microsoft as sync target
 5. **PWA icons** — add `public/icon-192.png` and `public/icon-512.png`
 

@@ -33,7 +33,7 @@ Each user brings their own API keys (Anthropic, OpenAI). OAuth app credentials (
 - **Middleware edge redirect**: Authenticated users (session cookie present) hitting `/` are redirected to `/home` at the edge — the server-rendered sign-in page is never reached for logged-in users.
 - **Per-user API keys**: Users pay their own LLM/Whisper bills. Keys stored in `UserSettings`.
 - **Admin approval gate**: `User.isApproved` flag; unapproved users are redirected to `/approval-pending`. Approval triggers a Welcome email via Resend.
-- **Worker service**: `sync-worker.ts` exists (node-cron) but is **not running on Railway** — only one `web` service is deployed. Sync currently happens on-demand when the user opens the Calendar page or clicks Refresh.
+- **Worker service**: `sync-worker.ts` exists (node-cron) but is **not running on Railway**. Instead, `POST /api/calendar/sync` accepts `Authorization: Bearer <CRON_SECRET>` and syncs all approved users — call it from a Railway Cron service every 15 min. On-demand sync still works from the Calendar page Refresh button.
 - **Calendar event cache**: `CalendarEvent` table stores all events per user from master calendar + iCal feeds. The Calendar view reads from this table; `POST /api/calendar/sync` populates it.
 - **PWA**: Custom `manifest.json` + `sw.js` with cache-first static, network-first API strategy.
 
@@ -53,6 +53,7 @@ Only infrastructure-level vars live in Railway. All OAuth credentials are stored
 | `SYNC_INTERVAL_MINUTES` | Optional, default 15 |
 | `USER_TIMEZONE` | Optional, default UTC |
 | `PUBLIC_API_SECRET` | Secret for `/api/public/*` endpoints |
+| `CRON_SECRET` | Random secret for Railway Cron → `POST /api/calendar/sync` |
 
 ---
 
@@ -148,7 +149,7 @@ At least one provider (Google or Microsoft) must be configured for sign-in to wo
 - Live legend showing which calendar each color represents
 - **Sync** (`POST /api/calendar/sync`): fetches master calendar (MS Graph `calendarView` or Google `events.list`) + all active iCal feeds; upserts into `CalendarEvent`; prunes stale entries. Window: 30 days back → 120 days forward.
 - **iCal RRULE expansion**: `lib/ical.ts` expands recurring events (`RRULE`) into individual instances within the sync window. Handles `FREQ=DAILY/WEEKLY/MONTHLY/YEARLY`, `INTERVAL`, `UNTIL`, `COUNT`, `BYDAY`, `BYMONTHDAY`, `EXDATE`, and `RECURRENCE-ID` exception overrides. Each expanded instance gets a stable `uid = originalUid:instanceStartIso` for DB upsert. No external library — implemented inline. DST-aware: expansion works in the event's local timezone (from `DTSTART;TZID=...`) so the wall-clock time stays constant across summer/winter transitions.
-- **No background worker running** — sync is on-demand only; a Railway Cron service calling the sync endpoint is the recommended next step
+- **Background sync via Railway Cron** — `POST /api/calendar/sync` accepts `Authorization: Bearer <CRON_SECRET>` (env var) to sync all approved users without a session. Set up a Railway Cron service with `*/15 * * * *` schedule running: `curl -s -X POST https://work-os.flexentric.com/api/calendar/sync -H "Authorization: Bearer $CRON_SECRET"`
 
 ### Calendar Settings (in `/settings → Calendar`)
 - Master account color picker: 10-color Apple Calendar palette

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { listMicrosoftCalendarView } from "@/lib/microsoft";
 import { listGoogleEventsInRange } from "@/lib/google";
 import { fetchAndParseIcal } from "@/lib/ical";
@@ -8,11 +8,7 @@ import { fetchAndParseIcal } from "@/lib/ical";
 const DAYS_BACK = 30;
 const DAYS_AHEAD = 120;
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const userId = session.userId;
+async function syncUser(userId: string): Promise<number> {
   const windowStart = new Date(Date.now() - DAYS_BACK * 86_400_000);
   const windowEnd = new Date(Date.now() + DAYS_AHEAD * 86_400_000);
   let synced = 0;
@@ -110,7 +106,9 @@ export async function POST() {
   for (const conn of connections) {
     if (!conn.icalUrl) continue;
     try {
-      const icalEvents = await fetchAndParseIcal(conn.icalUrl, windowStart, windowEnd);
+      const windowStart2 = new Date(Date.now() - DAYS_BACK * 86_400_000);
+      const windowEnd2 = new Date(Date.now() + DAYS_AHEAD * 86_400_000);
+      const icalEvents = await fetchAndParseIcal(conn.icalUrl, windowStart2, windowEnd2);
       const inWindow = icalEvents.filter((e) => e.status !== "cancelled");
       const currentIds = new Set(inWindow.map((e) => e.uid));
 
@@ -126,7 +124,7 @@ export async function POST() {
       await prisma.calendarEvent.deleteMany({
         where: {
           userId, source: conn.id,
-          startAt: { gte: windowStart, lte: windowEnd },
+          startAt: { gte: windowStart2, lte: windowEnd2 },
           externalId: { notIn: [...currentIds] },
         },
       });
@@ -141,5 +139,35 @@ export async function POST() {
     update: { calendarSyncedAt: new Date() },
   });
 
+  return synced;
+}
+
+export async function POST(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("authorization");
+
+  // Cron path: called with CRON_SECRET, syncs all approved users
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    const users = await prisma.user.findMany({
+      where: { isApproved: true },
+      select: { id: true },
+    });
+    let totalSynced = 0;
+    for (const user of users) {
+      try {
+        totalSynced += await syncUser(user.id);
+      } catch (err) {
+        console.error(`[calendar/sync] cron error for user ${user.id}:`, err);
+      }
+    }
+    console.log(`[calendar/sync] cron: synced ${totalSynced} events across ${users.length} users`);
+    return NextResponse.json({ synced: totalSynced, users: users.length });
+  }
+
+  // Session path: called from the UI, syncs only the logged-in user
+  const session = await auth();
+  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const synced = await syncUser(session.userId);
   return NextResponse.json({ synced });
 }
